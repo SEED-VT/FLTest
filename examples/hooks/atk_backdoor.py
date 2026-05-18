@@ -22,12 +22,21 @@ Attack stages:
      cfg.num_clients * cfg.fraction_fit  (assuming roughly equal
      weights, which the default Dirichlet/IID partition gives).
      Override with a fixed integer if you know the true sum.
-  3. @after_round: score the global model on a clean test set AND on
-     a triggered test set (every image patched, every label replaced
-     with BACKDOOR_TARGET_CLASS). backdoor_acc is the fraction of
-     triggered samples the model predicts as TARGET_CLASS -- i.e.
-     the attack success rate, not accuracy against original labels.
-     Append a row to tmp/backdoor_results/metrics.csv.
+  3. @after_round: score the global model on a clean test set AND
+     on a triggered test set. The triggered set is built from every
+     non-target-class test sample (samples already labeled
+     BACKDOOR_TARGET_CLASS are excluded because relabeling them
+     would be a no-op and would inflate the success rate). Each
+     non-target sample gets the same pixel patch applied at the same
+     coordinates. backdoor_acc = fraction of triggered samples the
+     model predicts as TARGET_CLASS -- the attack success rate. Not
+     accuracy against original labels. Each round appends a row to
+     tmp/backdoor_results/metrics.csv.
+
+CSV reset policy:
+  The hook APPENDS to metrics.csv (so a multi-cell sweep accumulates).
+  Delete the file before a fresh sweep:
+    rm -f tmp/backdoor_results/metrics.csv
 
 Trigger type:
   Pixel pattern only. A real Bagdasaryan-style semantic backdoor
@@ -55,6 +64,7 @@ Combine with a defense:
 """
 
 import csv
+import json
 import os
 from pathlib import Path
 
@@ -84,9 +94,12 @@ _CSV_HEADER = [
 ]
 
 
-# Module-level state
+# Module-level state. NOTE: under Ray-backed simulation, client-side hooks
+# (before/after_client_train) run in worker processes; @after_round runs in
+# the driver. Module globals do NOT cross that boundary. Anything the driver
+# needs from the client must be persisted to disk; see _l2_path / scale_update
+# / score_round_and_log below.
 _global_state_cache = {}        # (round, client_id) -> list of numpy arrays
-_attacker_l2 = {"unscaled": None, "scaled": None}  # latest attacker norms for after_round
 
 
 def _apply_pixel_trigger(img_tensor):
@@ -154,12 +167,24 @@ def _ensure_csv_header():
             csv.writer(f).writerow(_CSV_HEADER)
 
 
-def _l2(ndarray_list):
-    return float(np.sqrt(sum(np.sum(a ** 2) for a in ndarray_list)))
+def _l2_floats(ndarray_list):
+    """L2 norm over floating-point entries only (matches scaling partition)."""
+    return float(np.sqrt(sum(
+        np.sum(a ** 2) for a in ndarray_list
+        if np.issubdtype(a.dtype, np.floating)
+    )))
 
 
-def _l2_delta(post, pre):
-    return float(np.sqrt(sum(np.sum((p - q) ** 2) for p, q in zip(post, pre))))
+def _l2_delta_floats(post, pre):
+    return float(np.sqrt(sum(
+        np.sum((p - q) ** 2)
+        for p, q in zip(post, pre)
+        if np.issubdtype(p.dtype, np.floating)
+    )))
+
+
+def _l2_path(round_num, client_id):
+    return _RESULTS_DIR / f"_l2_r{round_num}_c{client_id}.json"
 
 
 @hooks.before_client_train
@@ -198,13 +223,31 @@ def scale_update(ctx):
     if pre is None or ctx.client_update is None:
         return
     gamma = _resolve_gamma(ctx)
-    delta = [u - g for u, g in zip(ctx.client_update, pre)]
-    unscaled_l2 = _l2(delta)
-    scaled_update = [g + gamma * d for g, d in zip(pre, delta)]
-    scaled_l2 = _l2_delta(scaled_update, pre)
+
+    # Scale only floating tensors. Integer state-dict buffers (e.g. BatchNorm
+    # num_batches_tracked) pass through from the attacker's update unchanged;
+    # multiplying ints by gamma either truncates or float-bleeds into ints.
+    scaled_update = []
+    delta_for_l2 = []
+    for g, u in zip(pre, ctx.client_update):
+        if np.issubdtype(g.dtype, np.floating):
+            d = u - g
+            scaled_update.append(g + gamma * d)
+            delta_for_l2.append(d)
+        else:
+            scaled_update.append(u.copy())
+            delta_for_l2.append(np.zeros_like(g))
+    unscaled_l2 = _l2_floats(delta_for_l2)
+    scaled_l2 = _l2_delta_floats(scaled_update, pre)
     ctx.client_update = scaled_update
-    _attacker_l2["unscaled"] = unscaled_l2
-    _attacker_l2["scaled"] = scaled_l2
+
+    # Persist L2s to disk so the driver's @after_round can read them. Module
+    # globals do not cross the Ray worker/driver boundary.
+    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    _l2_path(ctx.round, ctx.client_id).write_text(
+        json.dumps({"unscaled": unscaled_l2, "scaled": scaled_l2})
+    )
+
     print(
         f"  [BACKDOOR] scaled client {ctx.client_id} round {ctx.round} "
         f"gamma={gamma:g} unscaled_l2={unscaled_l2:.4f} scaled_l2={scaled_l2:.4f}"
@@ -254,6 +297,18 @@ def score_round_and_log(ctx):
     main_acc = main_correct / main_total if main_total else float("nan")
     backdoor_acc = bd_hits / bd_total if bd_total else float("nan")
 
+    # Pull attacker L2s from the per-round JSON file written by scale_update
+    # in the client worker process. May not exist on non-attack rounds.
+    unscaled_l2_str = scaled_l2_str = ""
+    l2_path = _l2_path(ctx.round, BACKDOOR_TARGET_CLIENT)
+    if l2_path.exists():
+        try:
+            data = json.loads(l2_path.read_text())
+            unscaled_l2_str = f"{data['unscaled']:.6f}"
+            scaled_l2_str = f"{data['scaled']:.6f}"
+        except (json.JSONDecodeError, KeyError, OSError):
+            pass
+
     _ensure_csv_header()
     defense = os.environ.get("FLTEST_DEFENSE_LABEL", "none")
     variant = os.environ.get("FLTEST_BACKDOOR_VARIANT", "model_replacement")
@@ -261,8 +316,7 @@ def score_round_and_log(ctx):
         csv.writer(f).writerow([
             ctx.round, variant, defense,
             f"{main_acc:.6f}", f"{backdoor_acc:.6f}",
-            "" if _attacker_l2["unscaled"] is None else f"{_attacker_l2['unscaled']:.6f}",
-            "" if _attacker_l2["scaled"] is None else f"{_attacker_l2['scaled']:.6f}",
+            unscaled_l2_str, scaled_l2_str,
         ])
 
     print(
