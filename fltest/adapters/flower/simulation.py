@@ -15,10 +15,7 @@ from fl_testing.frameworks.pytorch_fl_dataset import get_dataset_for_framework
 from fltest.core import HookContext, HookRunner
 from fltest.adapters.flower.client import get_client_app
 from fltest.adapters.flower.utils import set_parameters
-
-# Use original Flower server (vanilla FedAvg) so training updates correctly;
-# we keep hooks in simulation and client for future plugin use.
-from fl_testing.frameworks.flower.server import get_server_app as _get_server_app_orig
+from fltest.adapters.flower.server import get_server_app
 
 
 def run_flower_simulation(cfg, hook_runner: HookRunner):
@@ -98,12 +95,13 @@ def run_flower_simulation(cfg, hook_runner: HookRunner):
     hook_runner.run("on_data_distribute", ctx_data)
     c2data = ctx_data.dist_dict if ctx_data.dist_dict is not None else c2data
 
-    # Use vanilla FedAvg server so the global model updates each round. When using
-    # our HookedFedAvg (get_server_app with hook_runner), the ServerApp compat path
-    # does not apply aggregated parameters; vanilla server works correctly.
-    # Build hook runner inside the worker (hook_runner=None) so FLTEST_HOOKS run there
-    # and can e.g. write tmp/client_<cid>_round_<r>_a.txt; workers need FLTEST_HOOKS set and cwd.
-    server_app = _get_server_app_orig(cfg, central_eval_fn=_central_evaluate)
+    # Hooked server: lets server-side hooks (@before_aggregate, @on_aggregate,
+    # @after_aggregate) actually take effect. aggregate_fit unconditionally
+    # rebuilds parameters from ctx.new_global_state, so with no defense hook
+    # the result is the FedAvg round-trip (identical values).
+    # hook_runner=None on the client side so workers re-import FLTEST_HOOKS in
+    # each Ray worker.
+    server_app = get_server_app(cfg, central_eval_fn=_central_evaluate, hook_runner=hook_runner)
     client_app = get_client_app(cfg, c2data_loader=c2data)
 
     run_simulation(

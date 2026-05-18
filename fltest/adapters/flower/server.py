@@ -1,7 +1,6 @@
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server import ServerApp, ServerConfig, ServerAppComponents
 from flwr.server.strategy import FedAvg
-from flwr.server.strategy.aggregate import aggregate
 
 from fl_testing.frameworks.models import get_pytorch_model
 from fl_testing.frameworks.utils import seed_every_thing
@@ -20,13 +19,6 @@ def _fit_metrics_aggregation_fn(metrics):
     return {"loss temp": 0.0, "accuracy-temp": 0.0}
 
 
-def _fedavg_ndarrays(updates_and_weights):
-    """Weighted average using Flower's aggregate for consistency."""
-    if not updates_and_weights:
-        return None
-    return aggregate(updates_and_weights)
-
-
 class HookedFedAvg(FedAvg):
     """FedAvg strategy that runs before_round, before_aggregate, on_aggregate, after_aggregate hooks."""
 
@@ -41,19 +33,17 @@ class HookedFedAvg(FedAvg):
         results,  # List[Tuple[ClientProxy, FitRes]]
         failures,
     ):
-        # Hooks: before_round, before_aggregate (observability only; aggregation is parent)
         ctx_round = HookContext(cfg=self._cfg, round=server_round)
         self._hook_runner.run("before_round", ctx_round)
 
-        successful = [(proxy, res) for proxy, res in results if res.status.code == 0]
-        if not successful:
+        # Mirror Flower's own FedAvg behavior: bail only when there are no
+        # results at all (failures are tracked separately by FedAvg).
+        if not results:
             return None, {}
-
-        from flwr.common import parameters_to_ndarrays
 
         updates_as_ndarrays = [
             (parameters_to_ndarrays(res.parameters), res.num_examples)
-            for _proxy, res in successful
+            for _proxy, res in results
         ]
         ctx = HookContext(
             cfg=self._cfg,
@@ -63,7 +53,6 @@ class HookedFedAvg(FedAvg):
         )
         self._hook_runner.run("before_aggregate", ctx)
 
-        # Delegate to parent FedAvg so Server receives the exact same return value
         parameters_aggregated, metrics_aggregated = super().aggregate_fit(
             server_round, results, failures
         )
@@ -72,6 +61,13 @@ class HookedFedAvg(FedAvg):
             ctx.new_global_state = parameters_to_ndarrays(parameters_aggregated)
         self._hook_runner.run("on_aggregate", ctx)
         self._hook_runner.run("after_aggregate", ctx)
+
+        # Unconditionally rebuild aggregated parameters from ctx.new_global_state.
+        # With no defense hook this is a value-preserving round trip. With a
+        # defense hook (Krum, median, ...) that overwrote new_global_state, this
+        # is how the override takes effect.
+        if ctx.new_global_state is not None:
+            parameters_aggregated = ndarrays_to_parameters(ctx.new_global_state)
 
         return parameters_aggregated, metrics_aggregated
 
@@ -87,6 +83,9 @@ def get_server_app(cfg, central_eval_fn, hook_runner: HookRunner):
     )
     initial_parameters = get_parameters(net2)
 
+    def _fit_config(server_round: int):
+        return {"server_round": server_round}
+
     def server_fn(context):
         strategy = HookedFedAvg(
             hook_runner=hook_runner,
@@ -99,6 +98,7 @@ def get_server_app(cfg, central_eval_fn, hook_runner: HookRunner):
             evaluate_metrics_aggregation_fn=weighted_average,
             evaluate_fn=central_eval_fn,
             fit_metrics_aggregation_fn=_fit_metrics_aggregation_fn,
+            on_fit_config_fn=_fit_config,
             initial_parameters=ndarrays_to_parameters(initial_parameters),
         )
         config = ServerConfig(num_rounds=cfg.num_rounds)

@@ -57,11 +57,19 @@ class FlowerClient(NumPyClient):
         )
         after_trining_ws = sum_model_weights_pytorch(self.net)
 
+        # Use dataset length (number of examples), not loader length (number of
+        # batches). Flower uses num_samples as a FedAvg weight; per-batch
+        # weighting silently distorts aggregation under unequal partitions.
+        num_samples = (
+            len(self.trainloader.dataset)
+            if hasattr(self.trainloader, "dataset")
+            else len(self.trainloader)
+        )
+
         temp_cache = Index(self.cfg.fw_cache_path)
-        temp_cache[f"cid_{self.cid}"] = self.net.state_dict(), len(self.trainloader)
+        temp_cache[f"cid_{self.cid}"] = self.net.state_dict(), num_samples
 
         parameters_out = get_parameters(self.net)
-        num_samples = len(self.trainloader)
 
         # Hook: after_client_train (plugins can mutate the update)
         ctx = HookContext(
