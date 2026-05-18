@@ -37,31 +37,34 @@ MEDIAN_VARIANT = "median"     # "median" | "trimmed_mean"
 MEDIAN_TRIM_K = 0.1           # fraction trimmed from each side for trimmed_mean
 
 
-def _flatten(update):
-    shapes = [a.shape for a in update]
-    dtypes = [a.dtype for a in update]
-    flat = np.concatenate([a.ravel().astype(np.float64) for a in update])
-    return flat, shapes, dtypes
+def _validate_layout(updates):
+    ref_shapes = [a.shape for a in updates[0]]
+    ref_dtypes = [a.dtype for a in updates[0]]
+    for k, upd in enumerate(updates[1:], start=1):
+        if len(upd) != len(updates[0]):
+            raise ValueError(
+                f"[ROBUST] client {k} has {len(upd)} tensors; "
+                f"expected {len(updates[0])} (matching client 0)."
+            )
+        for j, (a, ref_s, ref_d) in enumerate(zip(upd, ref_shapes, ref_dtypes)):
+            if a.shape != ref_s:
+                raise ValueError(
+                    f"[ROBUST] client {k} tensor {j} has shape {a.shape}; "
+                    f"expected {ref_s}."
+                )
+            if a.dtype != ref_d:
+                raise ValueError(
+                    f"[ROBUST] client {k} tensor {j} has dtype {a.dtype}; "
+                    f"expected {ref_d}."
+                )
 
 
-def _unflatten(flat, shapes, dtypes):
-    out = []
-    offset = 0
-    for shape, dtype in zip(shapes, dtypes):
-        size = int(np.prod(shape)) if shape else 1
-        out.append(flat[offset:offset + size].reshape(shape).astype(dtype))
-        offset += size
-    return out
-
-
-def _coordinate_median(stack):
-    return np.median(stack, axis=0)
-
-
-def _coordinate_trimmed_mean(stack, trim_count):
-    sorted_stack = np.sort(stack, axis=0)
-    trimmed = sorted_stack[trim_count: stack.shape[0] - trim_count]
-    return trimmed.mean(axis=0)
+def _reduce_coordinate(stack_2d, variant, trim_count):
+    """Per-coordinate reduction across a (n, D) stack."""
+    if variant == "median":
+        return np.median(stack_2d, axis=0)
+    sorted_stack = np.sort(stack_2d, axis=0)
+    return sorted_stack[trim_count: stack_2d.shape[0] - trim_count].mean(axis=0)
 
 
 @hooks.on_aggregate
@@ -71,15 +74,10 @@ def robust_median_aggregate(ctx):
 
     updates = [u for u, _ in ctx.updates_and_weights]
     n = len(updates)
-
-    flats_shapes_dtypes = [_flatten(u) for u in updates]
-    flats = [fsd[0] for fsd in flats_shapes_dtypes]
-    shapes = flats_shapes_dtypes[0][1]
-    dtypes = flats_shapes_dtypes[0][2]
-    stack = np.stack(flats)
+    _validate_layout(updates)
 
     if MEDIAN_VARIANT == "median":
-        agg_flat = _coordinate_median(stack)
+        trim_count = 0
         tag = f"median round={ctx.round} n={n}"
     elif MEDIAN_VARIANT == "trimmed_mean":
         trim_count = int(MEDIAN_TRIM_K * n)
@@ -89,7 +87,6 @@ def robust_median_aggregate(ctx):
                 f"(got trim_count={trim_count}, n={n}, k={MEDIAN_TRIM_K}). "
                 "Lower MEDIAN_TRIM_K or add more clients."
             )
-        agg_flat = _coordinate_trimmed_mean(stack, trim_count)
         tag = f"trimmed_mean(k={MEDIAN_TRIM_K},trim={trim_count}) round={ctx.round} n={n}"
     else:
         raise ValueError(
@@ -97,5 +94,19 @@ def robust_median_aggregate(ctx):
             "must be 'median' or 'trimmed_mean'."
         )
 
-    ctx.new_global_state = _unflatten(agg_flat, shapes, dtypes)
+    # Aggregate per-tensor. Floating tensors get coordinate-wise reduction;
+    # integer tensors (e.g. BN num_batches_tracked) pass through from client 0
+    # since coordinate median/mean of small integers would silently truncate.
+    out = []
+    for j, ref in enumerate(updates[0]):
+        if np.issubdtype(ref.dtype, np.floating):
+            stack_2d = np.stack(
+                [updates[i][j].astype(np.float64).ravel() for i in range(n)]
+            )
+            reduced = _reduce_coordinate(stack_2d, MEDIAN_VARIANT, trim_count)
+            out.append(reduced.reshape(ref.shape).astype(ref.dtype))
+        else:
+            out.append(updates[0][j].copy())
+    ctx.new_global_state = out
+
     print(f"  [ROBUST] {tag}")
