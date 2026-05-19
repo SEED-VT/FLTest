@@ -54,6 +54,48 @@ class LeNet(nn.Module):
         return x
 
 
+class ConvNet(nn.Module):
+    """
+    ConvNet from Geiping et al. (Inverting Gradients, NeurIPS 2020).
+    """
+
+    def __init__(self, channels=1, num_classes=10, width=32):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(channels, 1 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(1 * width),
+            nn.ReLU(),
+            nn.Conv2d(1 * width, 2 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(2 * width),
+            nn.ReLU(),
+            nn.Conv2d(2 * width, 2 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(2 * width),
+            nn.ReLU(),
+            nn.Conv2d(2 * width, 4 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(4 * width),
+            nn.ReLU(),
+            nn.Conv2d(4 * width, 4 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(4 * width),
+            nn.ReLU(),
+            nn.Conv2d(4 * width, 4 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(4 * width),
+            nn.ReLU(),
+            nn.MaxPool2d(3),
+            nn.Conv2d(4 * width, 4 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(4 * width),
+            nn.ReLU(),
+            nn.Conv2d(4 * width, 4 * width, kernel_size=3, padding=1),
+            nn.BatchNorm2d(4 * width),
+            nn.ReLU(),
+            nn.MaxPool2d(3),
+            nn.Flatten(),
+            nn.Linear(36 * width, num_classes),
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
 def sum_model_weights_pytorch(model):
     return sum(p.sum().item() for p in model.parameters())
 
@@ -70,7 +112,7 @@ def _get_weights_from_cache(model_cache_dir, mname, model, channels):
 
 def get_pytorch_model(model_name, model_cache_dir, deterministic, channels, seed):
     # seed_every_thing(seed)
-    model_name2class = {'LeNet': LeNet}
+    model_name2class = {'LeNet': LeNet, 'ConvNet': ConvNet}
     if deterministic is None or model_cache_dir is None or seed is None:
         raise ValueError(
             "model_cache_dir must be provided when deterministic is True/False. seed value is also required")
