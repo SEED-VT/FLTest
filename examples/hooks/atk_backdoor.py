@@ -92,6 +92,10 @@ BACKDOOR_SCALE_GAMMA = "auto" # "auto" -> num_clients * fraction_fit, or a fixed
 # survival.
 _ATTACK_ENABLED = os.environ.get("FLTEST_BACKDOOR_DISABLE_ATTACK", "0") != "1"
 
+# Save the final-round global state for offline viz (universality_grid,
+# confmat_swap). Set FLTEST_BACKDOOR_SAVE_FINAL_STATE=1 to enable.
+_SAVE_FINAL_STATE = os.environ.get("FLTEST_BACKDOOR_SAVE_FINAL_STATE", "0") == "1"
+
 _RESULTS_DIR = Path("tmp/backdoor_results")
 _CSV_PATH = _RESULTS_DIR / "metrics.csv"
 _CSV_HEADER = [
@@ -339,3 +343,12 @@ def score_round_and_log(ctx):
         f"  [BACKDOOR] round {ctx.round} main_acc={main_acc:.4f} "
         f"backdoor_acc={backdoor_acc:.4f}"
     )
+
+    # Optionally checkpoint the global state at the final round, named by
+    # (variant, defense) so backdoor_viz.py can pick it up for the model-
+    # dependent visualizations.
+    if _SAVE_FINAL_STATE and ctx.round == ctx.cfg.num_rounds:
+        state_path = _RESULTS_DIR / f"global_state_{variant}_{defense}.npz"
+        named = {f"arr_{i}": np.asarray(a) for i, a in enumerate(ctx.global_state)}
+        np.savez(state_path, **named)
+        print(f"  [BACKDOOR] wrote final-round model state to {state_path}")
