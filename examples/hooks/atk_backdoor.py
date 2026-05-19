@@ -78,12 +78,19 @@ from fltest.adapters.flower.utils import set_parameters
 
 # Configuration
 BACKDOOR_TARGET_CLIENT = 0    # which client is malicious
-BACKDOOR_ATTACK_ROUND = 3     # which round to inject (1-indexed; first FL round is 1)
+BACKDOOR_ATTACK_ROUND = int(os.environ.get("FLTEST_BACKDOOR_ATTACK_ROUND", "3"))
 BACKDOOR_TARGET_CLASS = 2     # adversary's chosen target label
 BACKDOOR_PATCH_SIZE = 4       # trigger patch side length, pixels
 BACKDOOR_PATCH_VALUE = 1.0    # patch fill value (1.0 = white after normalization)
 BACKDOOR_POISON_RATIO = 0.5   # fraction of attacker's batch to poison
 BACKDOOR_SCALE_GAMMA = "auto" # "auto" -> num_clients * fraction_fit, or a fixed int
+
+# Baseline-mode kill switch. Set FLTEST_BACKDOOR_DISABLE_ATTACK=1 to skip the
+# poison + scale steps but keep the @after_round eval running. Used to measure
+# the "triggered target-hit rate without an attacker" so we can disambiguate
+# defense degeneracy (e.g. median collapsing to one class) from real attack
+# survival.
+_ATTACK_ENABLED = os.environ.get("FLTEST_BACKDOOR_DISABLE_ATTACK", "0") != "1"
 
 _RESULTS_DIR = Path("tmp/backdoor_results")
 _CSV_PATH = _RESULTS_DIR / "metrics.csv"
@@ -190,6 +197,8 @@ def _l2_path(round_num, client_id):
 @hooks.before_client_train
 def poison_and_cache(ctx):
     """Poison the attacker's loader on attack round; cache pre-train global state."""
+    if not _ATTACK_ENABLED:
+        return
     if ctx.client_id != BACKDOOR_TARGET_CLIENT:
         return
     if ctx.round != BACKDOOR_ATTACK_ROUND:
@@ -215,6 +224,8 @@ def poison_and_cache(ctx):
 @hooks.after_client_train
 def scale_update(ctx):
     """Scale the attacker's delta by gamma (model-replacement attack)."""
+    if not _ATTACK_ENABLED:
+        return
     if ctx.client_id != BACKDOOR_TARGET_CLIENT:
         return
     if ctx.round != BACKDOOR_ATTACK_ROUND:
@@ -311,7 +322,10 @@ def score_round_and_log(ctx):
 
     _ensure_csv_header()
     defense = os.environ.get("FLTEST_DEFENSE_LABEL", "none")
-    variant = os.environ.get("FLTEST_BACKDOOR_VARIANT", "model_replacement")
+    if _ATTACK_ENABLED:
+        variant = os.environ.get("FLTEST_BACKDOOR_VARIANT", "model_replacement")
+    else:
+        variant = "baseline"
     with open(_CSV_PATH, "a", newline="") as f:
         csv.writer(f).writerow([
             ctx.round, variant, defense,
