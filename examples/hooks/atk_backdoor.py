@@ -309,16 +309,18 @@ def score_round_and_log(ctx):
     backdoor_acc = bd_hits / bd_total if bd_total else float("nan")
 
     # Pull attacker L2s from the per-round JSON file written by scale_update
-    # in the client worker process. May not exist on non-attack rounds.
+    # in the client worker process. Only read when the attack is enabled --
+    # otherwise stale sidecars from prior runs would leak into baseline rows.
     unscaled_l2_str = scaled_l2_str = ""
-    l2_path = _l2_path(ctx.round, BACKDOOR_TARGET_CLIENT)
-    if l2_path.exists():
-        try:
-            data = json.loads(l2_path.read_text())
-            unscaled_l2_str = f"{data['unscaled']:.6f}"
-            scaled_l2_str = f"{data['scaled']:.6f}"
-        except (json.JSONDecodeError, KeyError, OSError):
-            pass
+    if _ATTACK_ENABLED:
+        l2_path = _l2_path(ctx.round, BACKDOOR_TARGET_CLIENT)
+        if l2_path.exists():
+            try:
+                data = json.loads(l2_path.read_text())
+                unscaled_l2_str = f"{data['unscaled']:.6f}"
+                scaled_l2_str = f"{data['scaled']:.6f}"
+            except (json.JSONDecodeError, KeyError, OSError):
+                pass
 
     _ensure_csv_header()
     defense = os.environ.get("FLTEST_DEFENSE_LABEL", "none")

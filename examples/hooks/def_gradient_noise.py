@@ -31,7 +31,12 @@ from fltest.core import hooks
 
 
 # Configuration
-DEFENSE_NOISE_SIGMA = 1e-4    # Noise std dev applied to each delta coordinate
+DEFENSE_NOISE_SIGMA = 1e-5    # Noise std dev applied to each delta coordinate.
+                              # With ~10M params the noise vector L2 is
+                              # ~sigma * sqrt(D) ~= 0.03, well under the
+                              # clip-bound of 5.0. The CLIP is what catches
+                              # the gamma=10 model-replacement attack;
+                              # sigma is the DP flavor on top.
 DEFENSE_CLIP_NORM = 5.0       # L2 cap on the per-client delta (NOT the full model)
 
 
