@@ -33,7 +33,11 @@ def fedavg_aggregate(models_state_dict, num_samples):
     for state_dict, n in zip(models_state_dict, num_samples):
         # Update global model parameters with the weighted sum
         for key in global_state_dict.keys():
-            global_state_dict[key] += state_dict[key] * (n / total_samples)
+            val = state_dict[key]
+            if val.is_floating_point():
+                global_state_dict[key] += val * (n / total_samples)
+            else:
+                global_state_dict[key] += (val.float() * (n / total_samples)).to(val.dtype)
     return global_state_dict
 
 
