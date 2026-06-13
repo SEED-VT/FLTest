@@ -1,0 +1,20 @@
+# Robustness scenario: two attacker clients flip their labels (y -> y+1).
+# Tracks per-client (personalized) accuracy alongside the global metrics.
+#   fltest run examples/configs/attack_label_flip.yaml
+name: label_flip_demo
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 5
+num_rounds: 4
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+
+attacks:
+  - {name: label_flip, params: {shift: 1}, target_clients: [0, 1]}
+
+metrics: [accuracy, loss, per_client]
+
+runs:
+  - {framework: reference, name: reference}

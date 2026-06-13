@@ -1,0 +1,23 @@
+# Privacy attack: DLG gradient inversion reconstructs a client's private image from its
+# shared gradient. Records reconstruction MSE/PSNR + label recovery (slides 23-25).
+# Use ConvNet (smooth activations) on CPU. Compare with defense_dlg.yaml to see a defense
+# raise the reconstruction error.
+#   fltest run examples/configs/dlg.yaml
+name: dlg_demo
+device: cpu
+dataset: cifar10
+model_name: ConvNet
+num_clients: 2
+num_rounds: 1
+client_lr: 0.05
+client_batch_size: 8
+dataset_partitions: 10
+max_test_data_size: 256
+
+attacks:
+  - {name: dlg, params: {target_client: 0, target_round: 1, num_images: 1, iters: 300, source: gradient}}
+
+metrics: [accuracy, loss]
+
+runs:
+  - {framework: reference, name: reference}

@@ -1,0 +1,21 @@
+# Showcases the built-in datasets and partitioners via the config fuzzer.
+# This sweeps 3 datasets x 2 distributions = 6 reference runs, exercising IID and non-IID
+# (Dirichlet) heterogeneity. Also a good input for the pitfall checker (it clears the
+# MNIST-only and IID-only pitfalls).
+#   fltest run      examples/configs/datasets_showcase.yaml
+#   fltest pitfalls examples/configs/datasets_showcase.yaml
+name: datasets_showcase
+device: cpu
+dataset: [mnist, fashion_mnist, cifar10]   # fuzzed
+data_distribution: [iid, dirichlet]        # fuzzed (Dirichlet = label skew)
+dirichlet_alpha: 0.3
+model_name: LeNet
+num_clients: 5
+num_rounds: 2
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+metrics: [accuracy, loss, per_client]
+
+runs:
+  - {framework: reference, name: reference}

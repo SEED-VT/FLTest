@@ -1,0 +1,25 @@
+# Robustness defense demo: two of six clients run a strong backdoor; coordinate-wise
+# median aggregation rejects the poisoned updates. Expect attack_success_rate to collapse
+# while clean accuracy is preserved.
+#   fltest run examples/configs/defense_robust.yaml          # add a defense below
+# Compare by removing the `defenses` block (undefended backdoor succeeds, ASR is high).
+name: defense_robust_demo
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 6
+num_rounds: 4
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+
+attacks:
+  - {name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}
+
+defenses:
+  - {name: median}        # try also: {name: krum, params: {num_byzantine: 2}} or {name: trimmed_mean, params: {trim: 2}}
+
+metrics: [accuracy, loss, per_client]
+
+runs:
+  - {framework: reference, name: reference}

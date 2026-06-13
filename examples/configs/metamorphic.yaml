@@ -1,0 +1,21 @@
+# Metamorphic relations on one framework (slide 22):
+#   - clients_scale:    N -> 2N clients (IID) must not drop accuracy beyond tolerance.
+#   - rounds_monotonic: more rounds must not decrease accuracy.
+#   fltest metamorphic examples/configs/metamorphic.yaml
+name: metamorphic_demo
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 4
+num_rounds: 3
+client_lr: 0.05
+dataset_partitions: 40
+max_test_data_size: 1024
+
+runs:
+  - {framework: reference, name: reference}
+
+testing:
+  metamorphic:
+    - {relation: clients_scale, values: [4, 8], metric: accuracy, tolerance: 0.1}
+    - {relation: rounds_monotonic, values: [1, 3], metric: accuracy, tolerance: 0.1}

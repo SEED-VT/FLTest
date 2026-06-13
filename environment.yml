@@ -1,0 +1,16 @@
+# Isolated conda environment for FLTest.
+#   conda env create -f environment.yml
+#   conda activate fltest
+#   pip install -e .            # core (reference + flower backends)
+#   pip install -e ".[nvflare]" # optional NVFlare backend
+#   pip install -e ".[pfl]"     # optional pfl backend
+#   pip install -e ".[dev]"     # test tooling
+#
+# Python deps are intentionally installed via pip from pyproject.toml so there is a
+# single source of truth for dependencies. Conda only provides an isolated interpreter.
+name: fltest
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip

@@ -1,52 +1,45 @@
-[tool.poetry]
-name = "fl_testing"
-version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-joblib = "1.4.2"
-pfl = {extras = ["pytorch"], version = "0.2.0"}
-flwr = {extras = ["simulation"], version = "1.11.1"}
-flwr-datasets = {extras = ["vision"], version = "0.3.0"}
-matplotlib = "3.9.2"
-nvflare = "2.5.0"
-tensorboard = "2.17.1"
-hydra-core = "1.3.2"
-torch = [
-  { version = "^2.0.1+cu118", source = "torch_cu118", markers = "sys_platform == 'linux'", optional = true },
-  { version = "^2.0.1", source = "PyPI", markers = "sys_platform == 'darwin'",  optional = true },
-]
-torchvision = "0.15.2+cu118"
-diskcache = "5.6.3"
-pytest = "^8.3.3"
-pytest-html = "^4.1.1"
-pydantic = "^2.0"
-click = "^8.0"
-
-[tool.poetry.extras]
-pytorch = [ 'torch', 'cmake']
-tf = ['tensorflow', 'tensorflow-macos', 'tensorflow-probability', 'cmake']
-trees = ['scikit-learn', 'xgboost']
-
-
-[[tool.poetry.source]]
-name = "torch_cu118"
-url = "https://download.pytorch.org/whl/cu118"
-priority = "supplemental"
-
-
-[tool.poetry.scripts]
-fl-validate = "fl_testing.validator.cli:main"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
+[project]
+name = "fltest"
+version = "0.2.0"
+description = "FLTest: a testbed for evaluating privacy and robustness of Privacy-Preserving Federated Learning (PPFL)."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "FLTest Team" }]
 
-[tool.flake8]
-ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
-max-line-length = 88
-exclude = ["venv", "__pycache__"]
+# Core dependencies. Torch/torchvision use default PyPI wheels so they resolve to
+# CPU/MPS builds on macOS arm64 and CPU/CUDA on Linux (no hard-coded +cu118 pin).
+dependencies = [
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "numpy>=1.24",
+    "flwr[simulation]==1.11.1",
+    "flwr-datasets[vision]==0.3.0",
+    "pydantic>=2.0",
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "omegaconf>=2.3",
+    "diskcache>=5.6",
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
+]
+
+[project.optional-dependencies]
+# Heavy backends kept optional so the lightweight core (reference + flower) always installs cleanly.
+nvflare = ["nvflare>=2.6,<2.9", "tensorboard>=2.16"]
+dev = ["pytest>=8.0", "pytest-html>=4.0"]
+docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
+
+[project.scripts]
+fltest = "fltest.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fltest*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,48 @@
+site_name: FLTest
+site_description: A testbed for evaluating privacy and robustness of Privacy-Preserving Federated Learning (PPFL)
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - scheme: slate
+      primary: indigo
+      toggle: { icon: material/weather-sunny, name: Light mode }
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - toc.integrate
+markdown_extensions:
+  - admonition
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.highlight
+  - pymdownx.superfences
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - Approach walkthrough: walkthrough.md
+      - Worked example (attacks & defenses): worked-example.md
+  - How it works:
+      - Concepts & internals: concepts.md
+      - Architecture: ARCHITECTURE.md
+  - Configuring runs:
+      - Configuration reference: configuration.md
+      - Config fuzzing: fuzzing.md
+  - Components:
+      - Datasets: datasets.md
+      - Attacks: attacks.md
+      - Defenses: defenses.md
+      - Metrics: metrics.md
+  - Testing:
+      - Differential testing: differential-testing.md
+      - Metamorphic testing: metamorphic-testing.md
+      - Pitfall checker: pitfalls.md
+  - Extend FLTest:
+      - Port your attacks & defenses: extending.md
+  - CLI reference: cli.md

@@ -1,0 +1,14 @@
+# A deliberately weak evaluation setup, to demonstrate the pitfall checker.
+# MNIST-only, IID-only, no attacks, no personalized metric => several pitfalls flagged.
+#   fltest pitfalls examples/configs/pitfalls_demo.yaml
+name: pitfalls_demo
+device: cpu
+dataset: mnist
+data_distribution: iid
+model_name: MLP
+num_clients: 4
+num_rounds: 2
+metrics: [accuracy, loss]
+
+runs:
+  - {framework: reference, name: reference}

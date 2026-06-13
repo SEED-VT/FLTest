@@ -1,0 +1,26 @@
+# Three-way cross-framework differential: reference oracle vs Flower vs NVFlare on the
+# SAME config. All three should land within tolerance of each other.
+# NVFlare is the slowest backend (separate simulator processes), so keep this small.
+#   fltest diff examples/configs/differential_3way.yaml
+name: differential_3way
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 3
+num_rounds: 2
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+metrics: [accuracy, loss]
+
+runs:
+  - {framework: reference, name: reference}
+  - {framework: flwr, name: flower}
+  - {framework: nvflare, name: nvflare}
+
+testing:
+  differential:
+    enabled: true
+    mode: cross_framework
+    metric: accuracy
+    tolerance: 0.1

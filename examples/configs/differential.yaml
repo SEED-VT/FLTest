@@ -1,0 +1,26 @@
+# Cross-framework differential test: the reference oracle vs Flower on the SAME config.
+# Both should reach the same final accuracy within tolerance (slide 21).
+#   fltest run  examples/configs/differential.yaml
+#   fltest diff examples/configs/differential.yaml
+name: differential_demo
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 4
+num_rounds: 3
+client_lr: 0.05
+client_epochs: 1
+dataset_partitions: 20
+max_test_data_size: 1024
+metrics: [accuracy, loss]
+
+runs:
+  - {framework: reference, name: reference}
+  - {framework: flwr, name: flower}
+
+testing:
+  differential:
+    enabled: true
+    mode: cross_framework      # or: determinism
+    metric: accuracy
+    tolerance: 0.08

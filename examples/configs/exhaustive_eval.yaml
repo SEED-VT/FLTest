@@ -1,0 +1,49 @@
+# Exhaustive evaluation in one config: a matrix of attack/defense scenarios.
+#
+# Each entry in `runs:` is an independent scenario with its own attacks/defenses (per-run
+# overrides). The shared settings (dataset, model, clients, rounds, metrics) are held fixed
+# so the scenarios are directly comparable. Backdoor scenarios report attack_success_rate
+# (ASR); robust-aggregation defenses should drive ASR down while preserving accuracy.
+#
+#   fltest run examples/configs/exhaustive_eval.yaml
+#
+# This runs on the dependency-light reference backend so the whole matrix finishes quickly
+# on CPU. Swap any run's framework to flwr/nvflare to cross-check a scenario.
+name: exhaustive_eval
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 6
+num_rounds: 3
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+metrics: [accuracy, loss, per_client]
+
+runs:
+  # ---- baseline (no adversary) ----
+  - {framework: reference, name: baseline, attacks: []}
+
+  # ---- single attacks (2 of 6 clients are adversarial) ----
+  - {framework: reference, name: label_flip,
+     attacks: [{name: label_flip, params: {shift: 1}, target_clients: [0, 1]}]}
+  - {framework: reference, name: sign_flip,
+     attacks: [{name: sign_flip, params: {scale: 3.0}, target_clients: [0, 1]}]}
+  - {framework: reference, name: gaussian,
+     attacks: [{name: gaussian, params: {sigma: 0.5}, target_clients: [0, 1]}]}
+  - {framework: reference, name: backdoor,
+     attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}]}
+
+  # ---- the backdoor, now defended (same attack + a defense) ----
+  - {framework: reference, name: backdoor+median,
+     attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}],
+     defenses: [{name: median}]}
+  - {framework: reference, name: backdoor+trimmed,
+     attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}],
+     defenses: [{name: trimmed_mean, params: {trim: 2}}]}
+  - {framework: reference, name: backdoor+krum,
+     attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}],
+     defenses: [{name: krum, params: {num_byzantine: 2}}]}
+  - {framework: reference, name: backdoor+normclip,
+     attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}],
+     defenses: [{name: norm_clip, params: {clip_norm: 0.5}}]}
