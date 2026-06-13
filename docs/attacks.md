@@ -24,7 +24,7 @@ Multiple attacks compose. `target_clients` restricts which clients are adversari
 
 **`label_flip`** — wraps the attacker's loader and relabels each batch
 (`y → (y+shift) % num_classes`, or a fixed `{src: dst}` mapping). A classic robustness
-attack; weak alone (one of the "naive" attacks the proposal flags).
+attack; weak alone (one of the "naive" attacks the project flags).
 
 **`gaussian`** — adds zero-mean Gaussian noise to the attacker's update
 (`u' = u + N(0, sigma²)`). Naive Byzantine attack; useful as a baseline.

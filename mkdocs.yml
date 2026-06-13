@@ -1,5 +1,12 @@
 site_name: FLTest
 site_description: A testbed for evaluating privacy and robustness of Privacy-Preserving Federated Learning (PPFL)
+site_url: https://seed-vt.github.io/FLTest/
+repo_url: https://github.com/SEED-VT/FLTest
+repo_name: SEED-VT/FLTest
+copyright: >
+  Supported by the U.S. National Science Foundation under the PDaSP program (Track 3),
+  Award #2452819. PIs: Fatima Anwar (UMass Amherst), Muhammad Ali Gulzar (Virginia Tech),
+  Ali Anwar (University of Minnesota).
 docs_dir: docs
 theme:
   name: material
@@ -17,6 +24,8 @@ theme:
     - toc.integrate
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - tables
   - toc: { permalink: true }
   - pymdownx.highlight

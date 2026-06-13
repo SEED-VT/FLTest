@@ -25,7 +25,7 @@ normalized per-channel to 0.5. (Defined in `_TRANSFORMS`.)
 | `dirichlet` | label skew across clients | `dirichlet_alpha` (lower ⇒ more skewed) |
 | `pathological` | each client gets only N classes | `classes_per_partition` |
 
-Non-IID partitioning is how you stress robustness/privacy realistically (the proposal's
+Non-IID partitioning is how you stress robustness/privacy realistically (the project's
 Pitfall-2/3). Example:
 
 ```yaml

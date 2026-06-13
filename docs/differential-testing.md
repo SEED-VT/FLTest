@@ -12,7 +12,7 @@ test accuracy.
 ## Mode 1: `cross_framework` (parity)
 
 Same logical config, different FL framework ⇒ same final metric within tolerance. This
-surfaces framework-implementation divergences (the kind of bug the proposal's AppFL
+surfaces framework-implementation divergences (the kind of bug the project's AppFL
 CUDA-on-CPU finding represents).
 
 **How it groups:** runs are grouped by a *logical key* — every spec field except the
@@ -39,7 +39,7 @@ testing:
 !!! note "Parity, not bit-identity"
     Different frameworks use different RNG streams and execution paths, so exact equality is
     impossible. The reference and Flower backends share FLTest's own weighted-mean
-    aggregation, which keeps them close; the tolerance (default 0.05, as in the proposal
+    aggregation, which keeps them close; the tolerance (default 0.05, as in the project
     slides) absorbs the residual. Choose tolerance to match your metric's natural variance.
 
 ## Mode 2: `determinism`

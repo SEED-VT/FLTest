@@ -60,7 +60,7 @@ fltest run examples/configs/exhaustive_eval.yaml
 
 - **Accuracy alone hides attacks.** The `backdoor` run keeps **0.889 accuracy** — it looks
   healthy — yet its **attack success rate is 0.47**. Without the ASR metric you would call
-  this model "robust." This is exactly the over-estimation the proposal warns about.
+  this model "robust." This is exactly the over-estimation the project warns about.
 - **"Naive" ≠ harmless.** `sign_flip` (2 of 6 clients) **collapses the model to 0.016**;
   `gaussian` halves accuracy. Undefended FedAvg is fragile.
 - **Robust aggregation works.** `median` and `trimmed_mean` drop backdoor ASR from 0.47 to
@@ -91,7 +91,7 @@ nvflare    acc=0.8672
 ```
 
 All three backends land within 0.017 — a divergence beyond tolerance would point to a
-framework bug (the class of issue the proposal's AppFL CUDA-on-CPU finding represents).
+framework bug (the class of issue the project's AppFL CUDA-on-CPU finding represents).
 
 ## 5. Metamorphic check
 

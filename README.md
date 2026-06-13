@@ -6,7 +6,24 @@ run the same experiment across multiple FL frameworks, inject attacks and defens
 composable hooks, and apply **differential** and **metamorphic** tests plus a **pitfall
 checker** — all from a single YAML config.
 
-This is the implementation of the NSF PDaSP Track-3 FLTEST proposal.
+FLTest is the **NSF PDaSP (Track 3) FLTEST project** — *A Testbed for Enhancing Privacy and
+Robustness of Federated Learning Systems* — supported by the U.S. National Science Foundation
+(**Award #2452819**).
+
+<p align="center">
+  <img src="docs/assets/logos/nsf.png" alt="U.S. National Science Foundation" height="72">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/assets/logos/umn.png" alt="University of Minnesota" height="58">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/assets/logos/vt.png" alt="Virginia Tech" height="64">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/assets/logos/umass.png" alt="University of Massachusetts Amherst" height="58">
+</p>
+
+**Principal Investigators:**
+[Ali Anwar](https://chalianwar.github.io/) (University of Minnesota) ·
+[Muhammad Ali Gulzar](https://people.cs.vt.edu/~gulzar/) (Virginia Tech) ·
+[Fatima Anwar](https://people.umass.edu/fanwar/) (University of Massachusetts Amherst)
 
 ## Why
 
@@ -30,7 +47,7 @@ makes a rigorous setup the default and *checks* for the common pitfalls.
   (cross-framework parity); or the same spec run twice must be identical (determinism).
 - **Metamorphic testing:** `clients_scale` (N→2N), `rounds_monotonic`, `attack_strength`,
   `dp_noise` relations.
-- **Pitfall checker + recommender:** flags the six FL-evaluation pitfalls from the proposal
+- **Pitfall checker + recommender:** flags the six FL-evaluation pitfalls from the project
   and emits copy-pasteable counter-experiments.
 - **Config fuzzer:** any list-valued knob (e.g. `dataset: [mnist, cifar10]`) is expanded
   into a grid of runs.
@@ -108,3 +125,13 @@ See `docs/ARCHITECTURE.md` for the design and `examples/configs/` for runnable c
   under single-step (FedSGD) training.
 - A `Dockerfile` (CPU, Linux) is provided as a deliverable; the verified path is the conda
   env above.
+
+## Acknowledgement
+
+This material is based upon work supported by the **U.S. National Science Foundation** under
+the **Privacy-preserving Data Sharing in Practice (PDaSP) program, Track 3 — Usable Tools and
+Testbeds for Confidential Data Sharing**, **Award #2452819**. The PDaSP program is supported
+by the NSF together with its co-sponsors (U.S. Department of Transportation, Intel, NIST, and
+Broadcom). Any opinions, findings, and conclusions or recommendations expressed in this
+material are those of the authors and do not necessarily reflect the views of the National
+Science Foundation or its co-sponsors. Program information: <https://pdasp.net/projects/>.

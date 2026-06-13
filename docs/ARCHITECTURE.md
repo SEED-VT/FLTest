@@ -76,5 +76,5 @@ so a defense sanitizes a tampered update on the same hook.
 
 ## Pitfalls
 
-`pitfalls/checker.py` maps the proposal's six pitfalls to heuristic detectors over a
+`pitfalls/checker.py` maps the project's six pitfalls to heuristic detectors over a
 `TestConfig`; `pitfalls/recommender.py` turns findings into counter-experiment YAML snippets.

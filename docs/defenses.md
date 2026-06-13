@@ -29,7 +29,7 @@ Two flavors compose through the same hooks:
 **`gradient_noise`** — clips the client's update *delta* (relative to the current global
 model) to `clip_norm`, then adds `N(0, sigma²)`. The user-space analogue of DP-SGD's
 per-update clipping + noise. Sweep `sigma` to chart the privacy/utility trade-off (the
-proposal's Pitfall-4).
+project's Pitfall-4).
 
 **`norm_clip`** — clips the update delta's L2 norm to `clip_norm` without noise. Limits the
 magnitude a malicious client can inject (mitigates scaled poisoning / sign-flip).

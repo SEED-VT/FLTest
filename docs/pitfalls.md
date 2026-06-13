@@ -1,7 +1,7 @@
 # Pitfall checker
 
 The pitfall checker inspects a config (before or without running it) and flags the common
-FL-evaluation mistakes from the proposal, then recommends concrete counter-experiments.
+FL-evaluation mistakes from the project, then recommends concrete counter-experiments.
 Code: `fltest/pitfalls/`.
 
 ```bash

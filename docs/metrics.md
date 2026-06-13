@@ -23,7 +23,7 @@ The test subset size is `max_test_data_size`. These three appear in `final` for 
 | `reconstruction_mse` | `dlg` attack | pixel MSE between the reconstructed and true victim image (lower = better reconstruction = worse privacy) |
 | `reconstruction_psnr` | `dlg` attack | peak signal-to-noise ratio of the reconstruction (higher = better reconstruction) |
 | `label_recovery` | `dlg` attack | fraction of victim labels correctly recovered |
-| `per_client_acc_mean` / `per_client_acc_min` | `per_client` listener | personalized accuracy of the final global model on each client's own data — `min` exposes representation disparity (proposal Pitfall-3) |
+| `per_client_acc_mean` / `per_client_acc_min` | `per_client` listener | personalized accuracy of the final global model on each client's own data — `min` exposes representation disparity (project Pitfall-3) |
 
 Add `per_client` to `metrics:` to enable personalized evaluation. Attack metrics appear
 automatically when the relevant attack is configured.
