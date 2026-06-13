@@ -11,13 +11,10 @@ Robustness of Federated Learning Systems* — supported by the U.S. National Sci
 (**Award #2452819**).
 
 <p align="center">
-  <img src="docs/assets/logos/nsf.png" alt="U.S. National Science Foundation" height="72">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/assets/logos/umn.png" alt="University of Minnesota" height="58">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/assets/logos/vt.png" alt="Virginia Tech" height="64">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/assets/logos/umass.png" alt="University of Massachusetts Amherst" height="58">
+  <img src="docs/assets/logos/nsf.png"   alt="U.S. National Science Foundation"        height="64" hspace="20" vspace="6">
+  <img src="docs/assets/logos/umn.png"   alt="University of Minnesota"                 height="42" hspace="20" vspace="6">
+  <img src="docs/assets/logos/vt.png"    alt="Virginia Tech"                           height="50" hspace="20" vspace="6">
+  <img src="docs/assets/logos/umass.png" alt="University of Massachusetts Amherst"     height="34" hspace="20" vspace="6">
 </p>
 
 **Principal Investigators:**

@@ -22,40 +22,52 @@ actually private and robust.
 
 ## What FLTest does
 
-- **One abstraction, many frameworks.** A single `run_simulation()` adapter runs the same
-  experiment on a reference oracle, **Flower**, and **NVFlare** — and you can compare them.
-- **Everything is a hook.** Attacks, defenses, and metrics are composable plugins sharing one
-  context, so a technique written once runs unchanged across every backend.
-- **Differential testing.** Frameworks must agree on the same config within tolerance;
-  divergence points to implementation bugs.
-- **Metamorphic testing.** Input→output relations must hold (e.g. doubling clients shouldn't
-  drop accuracy; stronger attacks shouldn't raise it).
-- **Pitfall checker + recommender.** Flags the six common FL-evaluation pitfalls and emits
-  copy-pasteable counter-experiments.
-- **Config fuzzer.** Any list-valued knob (`dataset: [mnist, cifar10]`) expands into a grid.
+FLTest streamlines the often complex and labor-intensive evaluation of privacy and
+robustness in PPFL systems. From a single configuration file it orchestrates end-to-end
+federated-learning experiments across multiple frameworks through one common
+`run_simulation()` abstraction, so the same setup can be run — and directly compared — on a
+dependency-light reference oracle, Flower, and NVFlare. Every adversarial and protective
+behaviour is expressed as a composable hook sharing one context: attacks, defenses, and
+metric listeners are written once and run unchanged across every backend, and several can be
+combined on a single run.
+
+On top of this orchestration, FLTest brings the discipline of software testing to PPFL.
+Differential testing checks that frameworks given the same configuration agree within
+tolerance, so an unexplained divergence points to an implementation bug. Metamorphic testing
+verifies that input–output relations which *should* hold actually do — for example, doubling
+the number of clients on IID data should not reduce accuracy, and strengthening an attack
+should not improve it. A pitfall checker, drawing on a continuously updated catalog of known
+evaluation pitfalls, detects configuration issues and overlooked vulnerabilities early, and a
+recommendation engine proposes counter-experiments that strengthen a weak evaluation. A
+configuration fuzzer expands any list-valued knob into a grid of experiments, allowing broad
+coverage of models, datasets, distributions, and attack settings from a compact config.
 
 ## Project goals
 
-1. Provide a **standardized, automated testbed** for privacy and robustness evaluation of
-   PPFL systems, lowering the barrier to rigorous FL research.
-2. Enable **cross-framework** and **cross-configuration** comparison so results are
-   reproducible and portable across Flower, NVFlare, IBM FL, and others.
-3. **Detect and remediate evaluation pitfalls** automatically, countering the
-   over-estimation of privacy/robustness claims.
-4. Support **advanced attack and defense models** (gradient-inversion privacy attacks,
-   backdoors, robust aggregation, differential privacy) as first-class, composable plugins.
-5. Grow a **sustainable open-source community** around trustworthy FL evaluation, integrated
-   with existing FL frameworks and NSF cyberinfrastructure.
+The project designs, develops, and sustains FLTest as a comprehensive, standardized testbed
+that automates privacy and robustness evaluation for PPFL systems, lowering the barrier to
+rigorous federated-learning research for both novice and expert users. It aims to make
+results reproducible and portable by enabling cross-framework and cross-configuration
+comparison across Flower, NVFlare, IBM FL, and other frameworks, and to counter the common
+over-estimation of privacy and robustness claims by detecting and remediating evaluation
+pitfalls automatically. FLTest treats advanced attacks and defenses — including
+gradient-inversion privacy attacks, backdoors, robust aggregation, and differential
+privacy — as first-class, composable components, and it is built to grow a sustainable
+open-source community around trustworthy FL evaluation, integrated with existing FL
+frameworks and NSF cyberinfrastructure.
 
 ## Objectives
 
-- **Automated test orchestration** that generates diverse, fault-revealing FL deployments
-  from a single configuration.
-- **A pitfall checker** with a continuously-updated catalog of known FL-evaluation pitfalls.
-- **A recommendation engine** that proposes counter-experiments to strengthen an evaluation.
-- **PPFL technique support** (DP, secure aggregation, robust aggregation) with tailored
-  privacy/robustness metrics, including personalized (per-client) evaluation.
-- **Deployment at scale** on FL frameworks and cloud testbeds for real-world evaluation.
+Concretely, FLTest delivers an automated test-orchestration module that generates diverse,
+fault-revealing federated deployments from a single configuration; a pitfall checker backed
+by a catalog of known FL-evaluation pitfalls that is continuously updated to reflect new
+research; and a recommendation engine that turns detected pitfalls into actionable
+counter-experiments. It provides support for privacy-preserving techniques such as
+differential privacy, secure aggregation, and robust aggregation, paired with privacy- and
+robustness-specific evaluation metrics — including personalized, per-client evaluation that
+exposes representation disparity a single global number would hide. Finally, it is designed
+for deployment at scale on FL frameworks and cloud testbeds so that techniques can be
+validated under realistic, real-world conditions.
 
 ---
 
@@ -69,14 +81,11 @@ actually private and robust.
 
 ## Sponsor & partner institutions
 
-<p align="center">
-  <img src="assets/logos/nsf.png" alt="U.S. National Science Foundation" height="80">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/logos/umn.png" alt="University of Minnesota" height="64">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/logos/vt.png" alt="Virginia Tech" height="72">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/logos/umass.png" alt="University of Massachusetts Amherst" height="64">
+<p align="center" style="display:flex; align-items:center; justify-content:center; gap:48px; flex-wrap:wrap;">
+  <img src="assets/logos/nsf.png" alt="U.S. National Science Foundation" style="height:72px; width:auto;">
+  <img src="assets/logos/umn.png" alt="University of Minnesota" style="height:48px; width:auto;">
+  <img src="assets/logos/vt.png" alt="Virginia Tech" style="height:56px; width:auto;">
+  <img src="assets/logos/umass.png" alt="University of Massachusetts Amherst" style="height:40px; width:auto;">
 </p>
 
 ## Acknowledgement
