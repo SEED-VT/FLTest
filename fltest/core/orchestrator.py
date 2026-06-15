@@ -132,7 +132,20 @@ class Orchestrator:
                 status="failed", error=f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
             )
         result.duration_seconds = time.time() - start
+        result.params = spec.summary()  # annotate the result with its resolved parameters
         return result
+
+    @staticmethod
+    def _describe(spec: RunSpec) -> str:
+        """One-line human descriptor of a run's distinguishing parameters."""
+        dist = spec.data_distribution
+        if spec.data_distribution == "dirichlet":
+            dist += f"(α={spec.dirichlet_alpha})"
+        elif spec.data_distribution == "pathological":
+            dist += f"({spec.classes_per_partition}cls)"
+        defense = ",".join(d.name for d in spec.defenses) or "none"
+        return (f"data={spec.dataset}/{dist} clients={spec.num_clients} "
+                f"rounds={spec.num_rounds} defense={defense}")
 
     def run(self, config: TestConfig) -> RunMatrix:
         specs = expand_run_specs(config)
@@ -140,8 +153,7 @@ class Orchestrator:
         start = time.time()
         for i, spec in enumerate(specs, 1):
             self._log(f"run {i}/{len(specs)}: {spec.run_name} [{spec.framework}] "
-                      f"(clients={spec.num_clients}, rounds={spec.num_rounds}, "
-                      f"data={spec.dataset}/{spec.data_distribution})")
+                      f"({self._describe(spec)}) run_id={spec.run_id}")
             result = self.run_spec(spec)
             status = result.status if result.status != "success" else (
                 f"acc={result.final.get('accuracy', float('nan')):.4f}"

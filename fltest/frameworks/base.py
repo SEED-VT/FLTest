@@ -28,6 +28,7 @@ class RunResult:
     status: str = "success"  # success | failed
     error: Optional[str] = None
     duration_seconds: float = 0.0
+    params: Dict[str, Any] = field(default_factory=dict)          # resolved run parameters (annotation)
     final: Dict[str, float] = field(default_factory=dict)         # e.g. {"accuracy":.., "loss":..}
     history: Dict[int, Dict[str, Any]] = field(default_factory=dict)  # round -> metrics
     per_client: Dict[int, Dict[str, Any]] = field(default_factory=dict)
@@ -41,6 +42,7 @@ class RunResult:
             "status": self.status,
             "error": self.error,
             "duration_seconds": round(self.duration_seconds, 3),
+            "params": self.params,
             "final": self.final,
             "history": {str(k): v for k, v in self.history.items()},
             "per_client": {str(k): v for k, v in self.per_client.items()},

@@ -47,16 +47,20 @@ def run(config_path: str, output: str, verbose: bool) -> None:
     config = load_config(config_path)
     matrix = Orchestrator(verbose=True).run(config)
 
-    click.echo("\n" + "=" * 70 + f"\nRUN MATRIX: {config.name}\n" + "=" * 70)
+    click.echo("\n" + "=" * 92 + f"\nRUN MATRIX: {config.name}\n" + "=" * 92)
     for r in matrix.results:
+        p = r.params
+        dist = p.get("data_distribution", "")
+        if p.get("dirichlet_alpha") is not None:
+            dist += f"(α={p['dirichlet_alpha']})"
+        defense = ",".join(d["name"] for d in p.get("defenses", [])) or "none"
+        descr = f"{p.get('dataset','')}/{dist}".ljust(22) + "  " + f"def={defense}".ljust(13)
         acc = r.final.get("accuracy")
         acc_s = f"acc={acc:.4f}" if acc is not None else r.status
-        extra = " ".join(
-            f"{k}={v:.4f}" for k, v in r.final.items()
-            if k not in ("accuracy", "loss", "gm_weight_sum") and isinstance(v, (int, float))
-        )
-        click.echo(f"  {r.run_name:<14} [{r.framework:<9}] {acc_s} {extra}")
-    click.echo("=" * 70)
+        asr = r.final.get("attack_success_rate")
+        asr_s = f" asr={asr:.4f}" if asr is not None else ""
+        click.echo(f"  {r.run_name:<12} [{r.framework:<7}] {descr} {acc_s}{asr_s}  ({r.run_id})")
+    click.echo("=" * 92)
 
     report_path = write_report(
         Path(output) / f"{config.name}_run.json", title=f"FLTest run: {config.name}",

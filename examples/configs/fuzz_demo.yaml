@@ -1,0 +1,24 @@
+# Fuzzing demo: a single list-valued knob (data_distribution) is expanded into a grid,
+# and crossed with two runs (undefended vs median-defended) sharing the same backdoor.
+# => 2 distributions x 2 runs = 4 experiments from one file.
+#   fltest run examples/configs/fuzz_demo.yaml
+name: fuzz_demo
+device: cpu
+dataset: mnist
+data_distribution: [iid, dirichlet]      # <-- list => fuzzed into a grid
+dirichlet_alpha: 0.3
+model_name: MLP
+num_clients: 6
+num_rounds: 4
+client_lr: 0.05
+dataset_partitions: 20
+max_test_data_size: 1024
+metrics: [accuracy, loss, per_client]
+
+# top-level attack applies to every run (each run may add its own defense)
+attacks:
+  - {name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_size: 5}, target_clients: [0, 1]}
+
+runs:
+  - {name: no_defense, framework: reference}
+  - {name: median,     framework: reference, defenses: [{name: median}]}

@@ -149,6 +149,36 @@ class RunSpec(BaseModel):
             return {"classes_per_partition": self.classes_per_partition}
         return {}
 
+    def summary(self) -> Dict[str, Any]:
+        """Compact, fully-resolved parameter annotation for reports and logs.
+
+        Distribution-specific knobs are only included when they apply, so e.g.
+        ``dirichlet_alpha`` is None for IID runs (where it has no effect).
+        """
+        return {
+            "framework": self.framework,
+            "dataset": self.dataset,
+            "data_distribution": self.data_distribution,
+            "dirichlet_alpha": self.dirichlet_alpha if self.data_distribution == "dirichlet" else None,
+            "classes_per_partition": (
+                self.classes_per_partition if self.data_distribution == "pathological" else None
+            ),
+            "model_name": self.model_name,
+            "num_clients": self.num_clients,
+            "num_rounds": self.num_rounds,
+            "client_epochs": self.client_epochs,
+            "client_lr": self.client_lr,
+            "client_batch_size": self.client_batch_size,
+            "optimizer": self.optimizer,
+            "seed": self.seed,
+            "attacks": [
+                {"name": a.name, "params": a.params, "target_clients": a.target_clients}
+                for a in self.attacks
+            ],
+            "defenses": [{"name": d.name, "params": d.params} for d in self.defenses],
+            "metrics": list(self.metrics),
+        }
+
 
 class TestConfig(BaseModel):
     """Raw top-level ``test_conf.yaml``. Scalar fields may be lists (fuzzed)."""
