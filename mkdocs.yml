@@ -5,7 +5,7 @@ repo_url: https://github.com/SEED-VT/FLTest
 repo_name: SEED-VT/FLTest
 copyright: >
   Supported by the U.S. National Science Foundation under the PDaSP program (Track 3),
-  Award #2452819. PIs: Fatima Anwar (UMass Amherst), Muhammad Ali Gulzar (Virginia Tech),
+  Award #2452817-19. PIs: Fatima Anwar (UMass Amherst), Muhammad Ali Gulzar (Virginia Tech),
   Ali Anwar (University of Minnesota).
 docs_dir: docs
 theme:

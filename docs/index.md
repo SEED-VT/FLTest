@@ -8,7 +8,7 @@ experiment across multiple FL frameworks, injects attacks and defenses as compos
 and applies **differential** and **metamorphic** testing plus a **pitfall checker** — giving
 researchers *software-defined control and visibility* into FL evaluation.
 
-> Developed under the **NSF PDaSP Program (Track 3), Award #2452819**.
+> Developed under the **NSF PDaSP Program (Track 3), Award #2452817-19**.
 
 ---
 
@@ -92,7 +92,7 @@ validated under realistic, real-world conditions.
 
 This material is based upon work supported by the **U.S. National Science Foundation** under
 the **Privacy-preserving Data Sharing in Practice (PDaSP) program, Track 3 — Usable Tools and
-Testbeds for Confidential Data Sharing**, **Award #2452819**. The PDaSP program is supported
+Testbeds for Confidential Data Sharing**, **Award #2452817-19**. The PDaSP program is supported
 by the NSF together with its co-sponsors (U.S. Department of Transportation, Intel, NIST, and
 Broadcom). Any opinions, findings, and conclusions or recommendations expressed in this
 material are those of the authors and do not necessarily reflect the views of the National

@@ -8,7 +8,7 @@ checker** — all from a single YAML config.
 
 FLTest is the **NSF PDaSP (Track 3) FLTEST project** — *A Testbed for Enhancing Privacy and
 Robustness of Federated Learning Systems* — supported by the U.S. National Science Foundation
-(**Award #2452819**).
+(**Award #2452817-19**).
 
 <p align="center">
   <img src="docs/assets/logos/nsf.png"   alt="U.S. National Science Foundation"        height="64" hspace="20" vspace="6">
@@ -127,7 +127,7 @@ See `docs/ARCHITECTURE.md` for the design and `examples/configs/` for runnable c
 
 This material is based upon work supported by the **U.S. National Science Foundation** under
 the **Privacy-preserving Data Sharing in Practice (PDaSP) program, Track 3 — Usable Tools and
-Testbeds for Confidential Data Sharing**, **Award #2452819**. The PDaSP program is supported
+Testbeds for Confidential Data Sharing**, **Award #2452817-19**. The PDaSP program is supported
 by the NSF together with its co-sponsors (U.S. Department of Transportation, Intel, NIST, and
 Broadcom). Any opinions, findings, and conclusions or recommendations expressed in this
 material are those of the authors and do not necessarily reflect the views of the National
