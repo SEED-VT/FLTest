@@ -11,8 +11,8 @@ attacks:
 Multiple attacks compose. `target_clients` restricts which clients are adversarial.
 
 `backdoor` and `dlg` operate on pixels, so they apply only to image datasets and raise a
-clear error on a text run. `label_flip`, `sign_flip`, and `gaussian` work on labels and
-updates, so they apply to either modality.
+clear error on a text run. `label_flip`, `sign_flip`, `gaussian`, and `model_replacement`
+work on labels or updates, so they apply to either modality.
 
 ## Catalog
 
@@ -21,6 +21,7 @@ updates, so they apply to either modality.
 | `label_flip` | data poisoning | `before_client_train` | `shift` (default 1), `mapping` |
 | `gaussian` | model poisoning (naive) | `after_client_train` | `sigma` (0.1) |
 | `sign_flip` | model poisoning | `after_client_train` | `scale` (1.0) |
+| `model_replacement` | model poisoning (targeted) | `after_client_train` | `scale` (automatic), `target_round` |
 | `backdoor` | data poisoning (targeted) | `before_client_train`, `after_round` | `target_label` (0), `infection_rate` (0.3), `patch_size` (4), `patch_value` (1.0) |
 | `dlg` | privacy (gradient inversion) | `before_client_train` (+ `before_aggregate` in shared_update mode) | `target_client`, `target_round`, `num_images`, `iters`, `source` |
 | `membership_inference` | privacy (inference) | `on_data_distribute`, `after_round` | `target_client` (0), `max_samples` (512) |
@@ -36,6 +37,31 @@ attack; weak alone (one of the "naive" attacks the project flags).
 
 **`sign_flip`** — reflects the update around the global model and scales it
 (`u' = g − scale·(u − g)`), pushing aggregation in the opposite direction.
+
+**`model_replacement`** — boosts a malicious local model around the current global model
+(`u' = g + scale·(u − g)`) so the malicious delta survives aggregation. This implements
+the train-and-scale attack from Bagdasaryan et al., [*How To Backdoor Federated
+Learning*](https://proceedings.mlr.press/v108/bagdasaryan20a.html). Compose it after
+`backdoor` to boost a locally learned trigger, and set `target_round` for a single-shot
+attack. Without an explicit `scale`, FLTest uses `num_clients / num_attackers`, which is
+the replacement factor for full-participation, equal-weight FedAvg.
+
+The hook interface exposes the local model, global model, client identity, and round, so
+the attack itself is backend-neutral on reference and Flower. It does not expose the
+round's total sample weight to a client, however. Automatic scaling is therefore only an
+estimate when clients have unequal sample weights; pass the exact factor explicitly in
+that case. NVFlare does not run client-side hooks and cannot apply this attack.
+
+The runnable comparison uses one of four clients as the attacker and boosts its backdoored
+model only in round 3. The automatic scale is 4.0. In the verified run, replacement raised
+ASR sharply on both supported backends while retaining most clean accuracy:
+
+| Backend | Attack | ASR | Accuracy |
+|---------|--------|----:|---------:|
+| reference | backdoor only | 0.2930 | 0.8926 |
+| reference | model replacement | 1.0000 | 0.8730 |
+| Flower | backdoor only | 0.2724 | 0.8867 |
+| Flower | model replacement | 0.9892 | 0.8506 |
 
 **`backdoor`** — the attacker stamps a bright patch on a fraction (`infection_rate`) of its
 images and relabels them to `target_label`; the global model learns
@@ -81,12 +107,19 @@ attacks: [{name: backdoor, params: {target_label: 0, infection_rate: 0.8, patch_
 ```
 
 ```yaml
+# boost one backdoored client in round 3; scale defaults to num_clients
+attacks:
+  - {name: backdoor, params: {target_label: 0, infection_rate: 0.8}, target_clients: [0]}
+  - {name: model_replacement, params: {target_round: 3}, target_clients: [0]}
+```
+
+```yaml
 # privacy attack
 model_name: ConvNet
 dataset: cifar10
 attacks: [{name: dlg, params: {target_client: 0, target_round: 1, iters: 300, source: gradient}}]
 ```
 
-Runnable: `examples/configs/attack_label_flip.yaml`, `dlg.yaml`.
+Runnable: `examples/configs/attack_label_flip.yaml`, `model_replacement.yaml`, `dlg.yaml`.
 
 To add your own attack, see **[Port your attacks & defenses](extending.md)**.

@@ -95,6 +95,7 @@ _METRIC_ORDER = [
     "accuracy",
     "loss",
     "attack_success_rate",
+    "model_replacement_scale",
     "per_client_acc_mean",
     "per_client_acc_min",
     "reconstruction_mse",
@@ -108,6 +109,7 @@ _METRICS_HIDDEN = {"gm_weight_sum"}
 #: Short column headers, so a run with several plugin metrics still fits a terminal.
 _METRIC_HEADERS = {
     "attack_success_rate": "asr",
+    "model_replacement_scale": "mr-scale",
     "per_client_acc_mean": "pc-mean",
     "per_client_acc_min": "pc-min",
     "reconstruction_mse": "rec-mse",
@@ -123,6 +125,7 @@ _METRIC_GLOSS = {
     "accuracy": "top-1 accuracy of the global model on the held-out test set",
     "loss": "mean cross-entropy on the same test set",
     "attack_success_rate": "attack success rate, the share of triggered inputs predicted as the attacker's target label",
+    "model_replacement_scale": "model-replacement scale applied to the malicious client delta",
     "per_client_acc_mean": "per-client accuracy, averaged over clients",
     "per_client_acc_min": "per-client accuracy of the worst-served client",
     "reconstruction_mse": "pixel mean-squared error of the DLG reconstruction, lower means a better reconstruction and worse privacy",

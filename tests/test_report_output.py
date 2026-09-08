@@ -76,7 +76,10 @@ def test_aggregation_rule_is_named_in_the_output(capsys):
 
 
 def test_shortened_columns_are_explained(capsys):
-    r = _result("r", accuracy=0.9, attack_success_rate=0.4, membership_inference_auc=0.66)
+    r = _result(
+        "r", accuracy=0.9, attack_success_rate=0.4,
+        membership_inference_auc=0.66, model_replacement_scale=4.0,
+    )
     print_run_matrix("demo", [r])
     out = capsys.readouterr().out
 
@@ -84,6 +87,8 @@ def test_shortened_columns_are_explained(capsys):
     assert "attack success rate" in out          # asr
     assert "membership inference AUC" in out     # mia-auc
     assert "0.5 is no leakage" in out
+    assert "mr-scale" in out
+    assert "scale applied to the malicious client delta" in out
 
 
 def test_per_round_trace_shows_progress(capsys):

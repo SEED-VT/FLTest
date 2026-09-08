@@ -17,6 +17,7 @@ BUILTIN_ATTACKS = {
     "backdoor": "fltest.attacks.data_poison_backdoor",
     "dlg": "fltest.attacks.dlg",
     "membership_inference": "fltest.attacks.membership_inference",
+    "model_replacement": "fltest.attacks.model_replacement",
 }
 
 for _name, _module in BUILTIN_ATTACKS.items():

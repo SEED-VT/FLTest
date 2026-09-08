@@ -12,7 +12,10 @@ def test_registries_populated():
     from fltest.core.registry import ATTACKS, DEFENSES, FRAMEWORKS, METRICS
 
     assert {"reference", "flwr"} <= set(FRAMEWORKS.names())
-    assert {"label_flip", "sign_flip", "gaussian", "backdoor", "dlg"} <= set(ATTACKS.names())
+    assert {
+        "label_flip", "sign_flip", "gaussian", "backdoor", "dlg",
+        "membership_inference", "model_replacement",
+    } <= set(ATTACKS.names())
     assert {"gradient_noise", "norm_clip", "krum", "trimmed_mean", "median"} <= set(DEFENSES.names())
     assert {"accuracy", "loss", "per_client"} <= set(METRICS.names())
 

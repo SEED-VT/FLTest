@@ -24,6 +24,11 @@ from fltest.data.utils import aggregate_ndarrays
 from fltest.frameworks.flower.utils import get_parameters, set_parameters
 
 
+def fit_config(server_round: int) -> Dict[str, int]:
+    """Send the lifecycle round to clients so their hook contexts match the server."""
+    return {"server_round": server_round}
+
+
 class HookedFedAvg(FedAvg):
     def __init__(self, hook_runner: HookRunner, spec: RunSpec, history: Dict, **kwargs):
         super().__init__(**kwargs)
@@ -104,7 +109,8 @@ def get_server_app(spec: RunSpec, hook_runner: HookRunner, history: Dict, test_l
             fraction_fit=1.0, fraction_evaluate=0.0,
             min_fit_clients=spec.num_clients, min_evaluate_clients=0,
             min_available_clients=spec.num_clients,
-            evaluate_fn=evaluate_fn, initial_parameters=initial_parameters,
+            evaluate_fn=evaluate_fn, on_fit_config_fn=fit_config,
+            initial_parameters=initial_parameters,
         )
         evaluate_fn._strategy = strategy  # let evaluate read the round's fit metrics
         return ServerAppComponents(strategy=strategy, config=ServerConfig(num_rounds=spec.num_rounds))

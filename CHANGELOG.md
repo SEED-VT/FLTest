@@ -5,6 +5,25 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.5.0
+
+**Model replacement.** Added the train-and-scale model-replacement attack. It boosts a
+malicious client's locally trained delta around the current global model, and composes
+with the existing backdoor attack so a trigger learned locally survives FedAvg. A
+single-shot target round, explicit scaling, and automatic equal-weight scaling across one
+or more colluding clients are supported on the reference and Flower backends.
+
+The implementation also served as a hook-interface audit. The existing client hook exposes
+the local model, global model, client identity, and round, which is enough for the attack.
+It does not expose the selected round's total sample weight, so automatic scaling cannot be
+exact for unequal-weight FedAvg; an explicit scale is required there. NVFlare still does
+not support client-side hooks.
+
+**Fixed.** Flower's client hook contexts always reported round zero because the server did
+not include `server_round` in fit configuration. It now sends the round already consumed
+by `FlowerClient`, so targeted-round attacks behave consistently across reference and
+Flower.
+
 ## 0.4.8
 
 **README.** The highlights advertised text datasets and Hugging Face models, but the

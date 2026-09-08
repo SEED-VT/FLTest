@@ -34,6 +34,81 @@ def test_sign_flip_reflects_update():
     assert np.allclose(ctx.client_update[0], 0.0)
 
 
+def test_model_replacement_scales_local_delta():
+    from fltest.attacks.model_replacement import ModelReplacementAttack
+
+    g = [np.ones((3,), dtype=np.float32)]
+    u = [np.full((3,), 2.0, dtype=np.float32)]
+    ctx = HookContext(cfg=_spec(), round=4, client_id=1, client_update=u, global_state=g)
+
+    ModelReplacementAttack(
+        scale=5.0, target_round=4, target_clients=[1]
+    ).after_client_train(ctx)
+
+    assert np.allclose(ctx.client_update[0], 6.0)
+    assert ctx.client_update[0].shape == (3,)
+    assert ctx.client_update[0].dtype == np.float32
+    assert ctx.metrics["model_replacement_scale"] == 5.0
+
+
+def test_model_replacement_obeys_target_client_and_round():
+    from fltest.attacks.model_replacement import ModelReplacementAttack
+
+    g = [np.zeros((2,), dtype=np.float32)]
+    original = [np.ones((2,), dtype=np.float32)]
+    attack = ModelReplacementAttack(scale=10.0, target_round=3, target_clients=[1])
+
+    wrong_client = HookContext(
+        cfg=_spec(), round=3, client_id=0,
+        client_update=[original[0].copy()], global_state=g,
+    )
+    attack.after_client_train(wrong_client)
+    assert np.array_equal(wrong_client.client_update[0], original[0])
+
+    wrong_round = HookContext(
+        cfg=_spec(), round=2, client_id=1,
+        client_update=[original[0].copy()], global_state=g,
+    )
+    attack.after_client_train(wrong_round)
+    assert np.array_equal(wrong_round.client_update[0], original[0])
+
+
+def test_model_replacement_auto_scale_is_shared_by_attackers():
+    from fltest.attacks.model_replacement import ModelReplacementAttack
+
+    g = [np.ones((1,), dtype=np.float32)]
+    u = [np.full((1,), 2.0, dtype=np.float32)]
+    ctx = HookContext(
+        cfg=_spec(num_clients=6), round=1, client_id=4,
+        client_update=u, global_state=g,
+    )
+
+    ModelReplacementAttack(target_clients=[1, 4]).after_client_train(ctx)
+
+    # Two colluding attackers divide the six-client replacement factor: 6 / 2 = 3.
+    assert np.allclose(ctx.client_update[0], 4.0)
+    assert ctx.metrics["model_replacement_scale"] == 3.0
+
+
+def test_model_replacement_reaches_target_under_equal_weight_fedavg():
+    from fltest.attacks.model_replacement import ModelReplacementAttack
+    from fltest.data.utils import aggregate_ndarrays
+
+    g = [np.zeros((2,), dtype=np.float32)]
+    target = [np.array([2.0, -3.0], dtype=np.float32)]
+    ctx = HookContext(
+        cfg=_spec(num_clients=4), round=1, client_id=0,
+        client_update=target, global_state=g,
+    )
+    ModelReplacementAttack(target_clients=[0]).after_client_train(ctx)
+
+    benign = [g[0].copy()]
+    aggregated = aggregate_ndarrays([
+        (ctx.client_update, 1), (benign, 1), (benign, 1), (benign, 1),
+    ])
+    assert np.allclose(aggregated[0], target[0])
+
+
 def test_gradient_noise_clips_delta_norm():
     from fltest.defenses.gradient_noise import GradientNoiseDefense
 

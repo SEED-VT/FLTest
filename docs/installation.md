@@ -49,11 +49,11 @@ pip install -e ".[docs]"      # this documentation site (mkdocs-material)
 ```bash
 fltest list
 # Frameworks: ['flare', 'flower', 'flwr', 'nvflare', 'reference']
-# Attacks:    ['backdoor', 'dlg', 'gaussian', 'label_flip', 'sign_flip']
+# Attacks:    ['backdoor', 'dlg', 'gaussian', 'label_flip', 'membership_inference', 'model_replacement', 'sign_flip']
 # Defenses:   ['gradient_noise', 'krum', 'median', 'norm_clip', 'trimmed_mean']
 # Metrics:    ['accuracy', 'loss', 'per_client']
 
-pytest tests/ -q          # 57 passing
+pytest tests/ -q
 ```
 
 `fltest list` and `fltest pitfalls` return immediately, because neither needs to load a

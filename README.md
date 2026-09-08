@@ -42,9 +42,9 @@ makes a rigorous setup the default and *checks* for the common pitfalls.
 - **Everything is a hook.** Attacks, defenses, and metric listeners are hook plugins that
   share one `HookContext`. A plugin written once runs across every backend, and several
   plugins compose on a single run.
-- **Attacks:** `label_flip`, `sign_flip`, `gaussian`, `backdoor` (with attack-success-rate),
-  `dlg` (gradient-inversion privacy attack), `membership_inference` (loss-threshold
-  privacy attack, scored as AUC each round).
+- **Attacks:** `label_flip`, `sign_flip`, `gaussian`, `backdoor` and `model_replacement`
+  (with attack-success-rate), `dlg` (gradient-inversion privacy attack), and
+  `membership_inference` (loss-threshold privacy attack, scored as AUC each round).
 - **Defenses (PPFL):** `gradient_noise` (DP-style clip+noise), `norm_clip`, and robust
   aggregation `krum` / `trimmed_mean` / `median`.
 - **Differential testing:** same config across frameworks must agree within tolerance
@@ -88,6 +88,7 @@ fltest run examples/configs/exhaustive_eval.yaml
 # privacy: what the model leaks, and what DP noise costs to stop it
 fltest run examples/configs/membership_inference.yaml
 fltest run examples/configs/dlg.yaml               # gradient inversion
+fltest run examples/configs/model_replacement.yaml # boosted backdoor, reference + Flower
 
 # heterogeneity: one client per real writer, and one topic per client
 fltest run examples/configs/femnist_natural.yaml
