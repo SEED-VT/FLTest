@@ -1,0 +1,75 @@
+# Secure aggregation vs. gradient inversion — a three-way privacy comparison.
+#
+# The `dlg` attack with `source: shared_update` plays an honest-but-curious server: it reads
+# the update a client actually uploaded, at `before_aggregate`, and inverts it back into the
+# client's training images. Three arms differ only in what the client uploads:
+#
+#   none            — the raw update. Reconstruction succeeds; this is the baseline.
+#   gradient_noise  — clipped + noised. Reconstruction degrades in proportion to sigma.
+#   secure_agg      — pairwise-masked. The server sees a blinded update, and the mask cancels
+#                     in FedAvg, so utility is (up to float rounding) unchanged.
+#
+# Read `reconstruction_mse` / `reconstruction_psnr` across the three runs. Higher MSE is a
+# worse reconstruction, i.e. a better defense.
+#
+#   fltest run examples/configs/secure_agg.yaml
+#
+# WHAT THIS DOES NOT SHOW: masks here come from a seed this process derives for both parties.
+# There is no key agreement and no cryptography, so this measures the *simulated adversary
+# view* — "under masking, does this attack still work" — and cannot support a claim that
+# secure aggregation is cryptographically secure. See docs/defenses.md.
+name: secure_agg_demo
+device: cpu
+dataset: cifar10
+model_name: ConvNet          # smooth activations; DLG inverts these far better than ReLU nets
+num_clients: 4
+num_rounds: 1
+client_epochs: 1             # DLG's update->gradient inversion assumes a single local step
+client_lr: 0.05
+client_batch_size: 8
+dataset_partitions: 100      # ~500 samples/client; see mask_scale below
+max_test_data_size: 256
+
+attacks:
+  - {name: dlg, params: {target_client: 0, target_round: 1, num_images: 1, iters: 300, source: shared_update}}
+
+# Declared at top level (not inside a run) so the metamorphic relation below has a defense to
+# sweep — `defense.seed` addresses the first entry of this list. The two comparison arms
+# override it per-run.
+defenses:
+  - name: secure_aggregation
+    params:
+      # The on-the-wire mask has std mask_scale * sqrt(P-1) / n_i, so mask_scale is set
+      # relative to the client's *shard size*, not to the parameter scale: with ~500 samples
+      # per client, a mask_scale of order 1 would be swallowed by the update. This value aims
+      # for a mask one to two orders of magnitude above the update; the run records
+      # `secagg_mask_to_update_ratio` so you can check rather than assume. A ratio near or
+      # below 1 means the masking is cosmetic and the DLG arm below proves nothing.
+      mask_scale: 5000.0
+      seed: 1
+
+metrics: [accuracy, loss]
+
+runs:
+  # Arm order puts the secure-aggregation run first because the metamorphic relation below
+  # sweeps runs[0].
+  - {framework: reference, name: secure_agg}
+  - {framework: reference, name: none, defenses: []}
+  - {framework: reference, name: gradient_noise,
+     defenses: [{name: gradient_noise, params: {clip_norm: 1.0, sigma: 0.05}}]}
+
+testing:
+  metamorphic:
+    # An exact-equality oracle, which the accuracy-threshold relations cannot express. The
+    # masks are supposed to cancel whatever they are, so changing the mask seed must leave
+    # the global model bit-identical. `gm_weight_sum` fingerprints the model directly;
+    # `accuracy` would round two different models to the same number.
+    #
+    # Two caveats worth knowing before reading a FAIL. (1) This re-runs the whole config once
+    # per seed, DLG included, so it is not cheap. (2) Cancellation is exact in real arithmetic
+    # but the wire format is float32, so a large mask_scale leaves a rounding residue of
+    # roughly 1e-8 x mask_scale/50 per coordinate. If this fails by a hair, lower mask_scale
+    # (and re-check the ratio) before suspecting the protocol; `mpc_aggregation` cancels in a
+    # finite ring and is the variant with no rounding to argue about.
+    - {relation: secagg_lossless, parameter: defense.seed, values: [1, 2, 3],
+       metric: gm_weight_sum, tolerance: 0.0}

@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
-from fltest.core.config import TestConfig
+from fltest.core.config import ROBUST_AGGREGATORS, TestConfig
 
 # Attacks the proposal flags as "naive" (Pitfall-1): over-used, weak under strong settings.
 NAIVE_ATTACKS = {"gaussian", "label_flip", "sign_flip"}
@@ -115,6 +115,84 @@ def check_config(config: TestConfig) -> List[Finding]:
                     f"gradient_noise sigma={sigma} may destroy utility.",
                     "Sweep sigma to find a usable privacy/utility operating point.",
                     {"sigma": sigma}))
+
+    # P4 (continued) — misconfiguration of the secure-aggregation techniques. Their failure
+    # modes are silent: a run with masking effectively disabled, or with a ring too small for
+    # the values it carries, still produces a finite, plausible-looking aggregate.
+    for d in config.defenses:
+        if d.name == "secure_aggregation":
+            mask_scale = d.params.get("mask_scale", 1.0)
+            if mask_scale <= 0:
+                findings.append(Finding(
+                    "P4_misconfig_secagg", "Secure aggregation masks disabled", "high",
+                    f"secure_aggregation mask_scale={mask_scale} adds no mask, so the server "
+                    "sees every update in the clear while the config claims SecAgg.",
+                    "Set a positive mask_scale, and read secagg_mask_to_update_ratio from the "
+                    "run to confirm the mask actually dominates the update.",
+                    {"mask_scale": mask_scale}))
+        if d.name == "mpc_aggregation":
+            quant_bits = d.params.get("quant_bits", 16)
+            modulus = d.params.get("modulus", 1 << 32)
+            dropout_rate = d.params.get("dropout_rate", 0.0)
+            if dropout_rate > 0:
+                findings.append(Finding(
+                    "P4_misconfig_secagg", "MPC dropouts without recovery", "high",
+                    f"mpc_aggregation dropout_rate={dropout_rate} drops clients after they "
+                    "mask. FLTest does not implement threshold secret sharing, so the dropped "
+                    "clients' pairwise masks stay in the sum and the aggregate is wrong.",
+                    "Keep dropout_rate=0 for utility runs; use a positive value only to "
+                    "measure the failure mode via mpc_agg_max_abs_error.",
+                    {"dropout_rate": dropout_rate}))
+            if quant_bits < 8:
+                findings.append(Finding(
+                    "P4_misconfig_secagg", "Fixed-point precision likely too low", "medium",
+                    f"mpc_aggregation quant_bits={quant_bits} leaves under 8 fractional bits; "
+                    "quantization error can exceed the update it is meant to carry.",
+                    "Raise quant_bits and sweep it against mpc_agg_max_abs_error to find the "
+                    "precision floor.",
+                    {"quant_bits": quant_bits}))
+            # The ring carries sum_i n_i * x_i scaled by 2**quant_bits, and holds it only
+            # while |value| < modulus/2. Individual shares may wrap harmlessly; the summed
+            # aggregate leaving that band is what cannot be recovered.
+            headroom = modulus / 2 / (2 ** quant_bits)
+            if headroom < 1.0:
+                findings.append(Finding(
+                    "P4_misconfig_secagg", "MPC ring too small for its precision", "high",
+                    f"mpc_aggregation can represent |value| < {headroom:.3g} with "
+                    f"quant_bits={quant_bits}, modulus={modulus}, but it must hold the "
+                    "sample-weighted sum of every client update. Overflow wraps around "
+                    "silently rather than raising.",
+                    "Raise modulus or lower quant_bits, and check mpc_overflow_rate is 0.",
+                    {"quant_bits": quant_bits, "modulus": modulus, "headroom": headroom}))
+
+    # P4 (continued) — a secure-aggregation run with no exact-equality oracle. Masking is
+    # either lossless or broken, and accuracy thresholds are too coarse to tell them apart.
+    secagg_names = {"secure_aggregation", "mpc_aggregation"} & defense_names
+    if secagg_names:
+        relations = {r.relation for r in config.testing.metamorphic}
+        if "secagg_lossless" not in relations:
+            findings.append(Finding(
+                "P4_untested_secagg", "Secure aggregation correctness untested", "medium",
+                f"{sorted(secagg_names)} is configured but no 'secagg_lossless' relation "
+                "checks that the masks cancel. A residue that survives aggregation moves the "
+                "model without necessarily moving accuracy far enough to notice.",
+                "Add a secagg_lossless metamorphic relation over defense.seed with "
+                "tolerance 0 on the gm_weight_sum metric.",
+                {"defenses": sorted(secagg_names), "relations": sorted(relations)}))
+
+    # P4 (continued) — masking and per-client robust aggregation are mutually exclusive in a
+    # real deployment. Both "work" here because the simulation hands the server plaintext, so
+    # a config combining them measures a system nobody can build.
+    if "secure_aggregation" in defense_names and (defense_names & set(ROBUST_AGGREGATORS)):
+        findings.append(Finding(
+            "P4_secagg_vs_robust", "Secure aggregation combined with robust aggregation", "medium",
+            "secure_aggregation hides individual updates, but "
+            f"{sorted(defense_names & set(ROBUST_AGGREGATORS))} needs to compare them "
+            "client-by-client. A real server cannot do both; this simulation lets it, so the "
+            "combination over-states what the defense stack delivers.",
+            "Evaluate the two separately, or state explicitly that the robust rule assumes an "
+            "unmasked server.",
+            {"defenses": sorted(defense_names)}))
 
     # P5 — Underestimating subtle privacy leakages.
     if not (attack_names & PRIVACY_ATTACKS):

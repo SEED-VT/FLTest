@@ -50,7 +50,8 @@ pip install -e ".[docs]"      # this documentation site (mkdocs-material)
 fltest list
 # Frameworks: ['flare', 'flower', 'flwr', 'nvflare', 'reference']
 # Attacks:    ['backdoor', 'dlg', 'gaussian', 'label_flip', 'sign_flip']
-# Defenses:   ['gradient_noise', 'krum', 'median', 'norm_clip', 'trimmed_mean']
+# Defenses:   ['gradient_noise', 'krum', 'median', 'mpc_aggregation', 'norm_clip',
+#              'secure_aggregation', 'trimmed_mean']
 # Metrics:    ['accuracy', 'loss', 'per_client']
 
 pytest tests/ -q          # 57 passing

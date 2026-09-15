@@ -50,8 +50,9 @@ implement matching methods; `attach()` registers exactly those onto a `HookRunne
 - **Attacks** (`attacks/`, `ThreatModelBaseClass`): mutate `ctx.client_data` (data poisoning),
   `ctx.client_update` (model poisoning), or reconstruct from gradients (DLG).
 - **Defenses** (`defenses/`, `PPFLBaseClass`): perturb `ctx.client_update` per client
-  (gradient_noise, norm_clip) or replace `ctx.updates_and_weights` at `before_aggregate`
-  (robust aggregation: krum, trimmed_mean, median).
+  (gradient_noise, norm_clip, secure_aggregation) or replace `ctx.updates_and_weights` at
+  `before_aggregate` (robust aggregation: krum, trimmed_mean, median; secure aggregation:
+  mpc_aggregation).
 - **Metric listeners** (`metrics/`): record extra metrics via `ctx.record(...)`.
 
 Parameters use one canonical representation everywhere — an ordered list of numpy arrays —

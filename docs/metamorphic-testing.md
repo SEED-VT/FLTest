@@ -21,9 +21,31 @@ To isolate the swept parameter, any *other* list-valued knob is collapsed to its
 | `rounds_monotonic` | `num_rounds` | non-decreasing | more rounds shouldn't decrease accuracy |
 | `attack_strength` | *(you specify)* | non-increasing | stronger attack shouldn't *raise* accuracy |
 | `dp_noise` | *(you specify)* | non-increasing | more privacy noise shouldn't raise accuracy (utility) |
+| `secagg_lossless` | `defense.seed` | exactly equal | a secure-aggregation mask seed must not move the result *at all* |
 
 `non_decreasing`: each step may rise or stay; a drop greater than `tolerance` fails.
 `non_increasing`: the mirror image. (Rules: `fltest/testing/rules.py`.)
+
+`exactly_equal` is the odd one out. The other three are inequalities with slack, which is
+all an accuracy-based oracle can support: they catch a defense that is *badly* wrong.
+`secagg_lossless` applies where the transform provably must not move the result at all —
+secure aggregation's masks are supposed to cancel whatever they are, so a different mask
+seed must leave the global model bit-identical. Give it `tolerance: 0.0` and a metric that
+fingerprints the model (`gm_weight_sum`) rather than one that projects it through a test
+set (`accuracy`, which rounds two different models to the same number):
+
+```yaml
+defenses: [{name: secure_aggregation, params: {mask_scale: 5000.0, seed: 1}}]
+testing:
+  metamorphic:
+    - {relation: secagg_lossless, parameter: defense.seed, values: [1, 2, 3],
+       metric: gm_weight_sum, tolerance: 0.0}
+```
+
+Note that `secure_aggregation` masks in float32, so a large `mask_scale` leaves a rounding
+residue; if this fails by a hair, lower `mask_scale` before suspecting the protocol.
+`mpc_aggregation` cancels in a finite ring and has no rounding to argue about. See
+[Defenses](defenses.md#secure-aggregation).
 
 ## Sweeping plugin parameters
 

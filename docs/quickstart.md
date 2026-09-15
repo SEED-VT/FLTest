@@ -46,6 +46,7 @@ not decrease it.
 fltest run examples/configs/attack_label_flip.yaml   # 2/5 clients flip labels
 fltest run examples/configs/dlg.yaml                 # gradient-inversion privacy attack
 fltest run examples/configs/defense_robust.yaml      # backdoor defeated by median aggregation
+fltest run examples/configs/secure_agg.yaml         # gradient inversion vs. secure aggregation
 ```
 
 `defense_robust.yaml` shows attack-success-rate collapse from ~0.80 to ~0.03 while clean

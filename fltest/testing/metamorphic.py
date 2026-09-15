@@ -9,6 +9,16 @@ expected relation on the output metric — no ground-truth label needed. Built-i
                           accuracy must be non-increasing as the attack strengthens.
 * ``dp_noise``         — vary a defense parameter (e.g. ``defense.sigma``);
                           accuracy must be non-increasing as privacy noise increases.
+* ``secagg_lossless``  — vary a defense parameter that must not affect the result at all
+                          (by default ``defense.seed``, the secure-aggregation mask seed);
+                          the metric must be *exactly* equal across the sweep.
+
+``secagg_lossless`` is the one relation here with an equality oracle rather than an
+inequality with slack. Secure aggregation's whole claim is that the masks cancel, so a
+different mask seed must produce a bit-identical global model; anything else means a
+residue survived. Give it ``tolerance: 0.0`` and a metric that fingerprints the model —
+``gm_weight_sum`` — rather than ``accuracy``, which can round two different models to the
+same number.
 
 Metamorphic checks are within a single framework (the first entry in ``runs``).
 """
@@ -21,7 +31,7 @@ from typing import Any, Dict, List, Optional
 from fltest.core.config import FUZZABLE_KNOBS, MetamorphicRelation, TestConfig
 from fltest.core.orchestrator import Orchestrator, expand_run_specs
 from fltest.testing.report import TestOutcome
-from fltest.testing.rules import non_decreasing, non_increasing
+from fltest.testing.rules import exactly_equal, non_decreasing, non_increasing
 
 # relation -> (default parameter, rule). ``None`` parameter must be supplied by the user.
 _RELATIONS = {
@@ -29,6 +39,7 @@ _RELATIONS = {
     "rounds_monotonic": ("num_rounds", non_decreasing),
     "attack_strength": (None, non_increasing),
     "dp_noise": (None, non_increasing),
+    "secagg_lossless": ("defense.seed", exactly_equal),
 }
 
 
@@ -118,6 +129,8 @@ class MetamorphicTester:
             report.outcomes.append(TestOutcome(
                 "metamorphic", f"{rel.relation} ({param}, metric={rel.metric})",
                 "PASS" if ok else "FAIL", detail,
+                # 8 decimals, not 4: an exact-equality relation that FAILs on a tiny
+                # residue would otherwise print a column of identical-looking numbers.
                 evidence={"param": param, "values": values,
-                          rel.metric: [round(p[1], 4) for p in pairs]}))
+                          rel.metric: [round(p[1], 8) for p in pairs]}))
         return report
