@@ -45,12 +45,15 @@ makes a rigorous setup the default and *checks* for the common pitfalls.
 - **Attacks:** `label_flip`, `sign_flip`, `gaussian`, `backdoor` and `model_replacement`
   (with attack-success-rate), `dlg` (gradient-inversion privacy attack), and
   `membership_inference` (loss-threshold privacy attack, scored as AUC each round).
-- **Defenses (PPFL):** `gradient_noise` (DP-style clip+noise), `norm_clip`, and robust
-  aggregation `krum` / `trimmed_mean` / `median`.
+- **Defenses (PPFL):** `gradient_noise` (DP-style clip+noise), `norm_clip`, robust
+  aggregation `krum` / `trimmed_mean` / `median`, and secure aggregation
+  `secure_aggregation` (float pairwise masking) / `mpc_aggregation` (fixed point in a
+  finite ring, which surfaces quantization, overflow, and dropout errors).
 - **Differential testing:** same config across frameworks must agree within tolerance
   (cross-framework parity); or the same spec run twice must be identical (determinism).
 - **Metamorphic testing:** `clients_scale` (N→2N), `rounds_monotonic`, `attack_strength`,
-  `dp_noise` relations.
+  `dp_noise`, and `secagg_lossless` — an exact-equality oracle: a secure-aggregation mask
+  seed must leave the global model bit-identical.
 - **Pitfall checker + recommender:** flags the six FL-evaluation pitfalls from the project
   and emits copy-pasteable counter-experiments.
 - **Config fuzzer:** any list-valued knob (e.g. `dataset: [mnist, cifar10]`) is expanded
@@ -89,6 +92,7 @@ fltest run examples/configs/exhaustive_eval.yaml
 fltest run examples/configs/membership_inference.yaml
 fltest run examples/configs/dlg.yaml               # gradient inversion
 fltest run examples/configs/model_replacement.yaml # boosted backdoor, reference + Flower
+fltest run examples/configs/secure_agg.yaml        # DLG vs no defense / DP noise / masking
 
 # heterogeneity: one client per real writer, and one topic per client
 fltest run examples/configs/femnist_natural.yaml

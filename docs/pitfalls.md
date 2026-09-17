@@ -17,6 +17,9 @@ fltest pitfalls <config.yaml>
 | `P3_iid_only` | IID-only evaluation | every `data_distribution` is `iid` | high |
 | `P3_no_personalized` | No personalized metric | `per_client` not in `metrics` | medium |
 | `P4_misconfig_dp` | Misconfigured DP | `gradient_noise` with `sigma=0` (no privacy) or very large | high / low |
+| `P4_misconfig_secagg` | Misconfigured secure aggregation | `secure_aggregation` with no mask, or `mpc_aggregation` with too few `quant_bits`, a `modulus` too small for the summed aggregate, or dropouts it cannot recover from | high / medium |
+| `P4_untested_secagg` | SecAgg correctness untested | masking configured with no `secagg_lossless` relation to check that the masks cancel | medium |
+| `P4_secagg_vs_robust` | Masking + robust aggregation | `secure_aggregation` combined with `krum`/`trimmed_mean`/`median` — a real server cannot inspect masked updates, so the pair over-states the stack | medium |
 | `P5_subtle_leakage` | Subtle privacy leakage | no privacy attack (`membership_inference` or `dlg`) included | medium |
 | `P6_user_expertise` | Mismatched defense | only perturbation defenses against non-naive attacks | low |
 

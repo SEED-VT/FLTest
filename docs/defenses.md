@@ -8,11 +8,14 @@ defenses:
   - {name: <defense>, params: {...}}
 ```
 
-Two flavors compose through the same hooks:
+Three flavors compose through the same hooks:
 
 - **Client-side perturbation** acts at `after_client_train` on one client's update.
 - **Robust aggregation** acts at `before_aggregate` by replacing the set of updates the
   backend will average.
+- **Secure aggregation** blinds each update so the server sees only the sum. `secure_aggregation`
+  masks client-side and lets FedAvg cancel the masks; `mpc_aggregation` simulates the whole
+  fixed-point protocol at `before_aggregate`.
 
 ## Catalog
 
@@ -23,6 +26,8 @@ Two flavors compose through the same hooks:
 | `krum` | robust aggregation (select) | `before_aggregate` | `num_byzantine` (1) |
 | `trimmed_mean` | robust aggregation (coordinate trim) | `before_aggregate` | `trim` (1) |
 | `median` | robust aggregation (coordinate median) | `before_aggregate` | — |
+| `secure_aggregation` | pairwise masking, float | `after_client_train` | `mask_scale` (1.0), `seed` (0) |
+| `mpc_aggregation` | pairwise masking, fixed point | `before_aggregate` | `quant_bits` (16), `modulus` (2^32), `dropout_rate` (0.0) |
 
 ## How each works
 
@@ -42,6 +47,109 @@ across clients, then averages the rest.
 
 **`median`** — coordinate-wise median across client updates. Simple and strong against a
 Byzantine minority.
+
+## Secure aggregation
+
+Both variants build **pairwise masks** in the style of Bonawitz et al. (CCS 2017): every pair
+of participants derives one shared pseudo-random vector, the lower-indexed party adds it and
+the higher-indexed party subtracts it, so the masks telescope to zero once every participant's
+contribution is summed. Each mask is a pure function of `(seed, round, client pair, layer)`, so
+both parties derive it independently — which is what lets the Flower backend, where client
+hooks run in separate Ray workers, use them at all.
+
+!!! warning "What a single-process simulation can and cannot show"
+    The masks come from a seed this process derives for both parties. There is no key
+    agreement, no threshold secret sharing, and no dropout recovery, so **nothing here
+    demonstrates cryptographic security**. What it does reproduce faithfully is the *simulated
+    adversary view*: what an honest-but-curious server actually receives. Claims of the form
+    "under masking, attack X no longer succeeds" are supported; claims of the form "secure
+    aggregation protects Y" are not.
+
+    Neither defense touches integer entries of the `state_dict` — BatchNorm's
+    `num_batches_tracked`, a Hugging Face model's `position_ids`. A float mask cast back to
+    int64 truncates, so the halves stop cancelling and the aggregate drifts silently. Those
+    entries carry counters rather than learned information, so they pass through unmasked.
+
+    Both defenses also assume the participant set is fixed for the round — masks cancel only
+    across exactly the set that produced them. FLTest's backends use full participation, and
+    `secure_aggregation` records `secagg_participant_mismatch` if a round ever aggregates a
+    different number of updates rather than letting the residue pass silently.
+
+**`secure_aggregation`** — float masking, no quantization. The client uploads
+`x_i + m_i / n_i`; FedAvg's `sum_i (n_i / N) * x_i` then cancels the masks exactly. This is
+the variant for privacy comparisons: the mask is in place at `before_aggregate`, which is
+where the `dlg` attack with `source: shared_update` reads the uploaded update.
+
+One consequence decides whether a configuration hides anything at all. The on-the-wire mask
+has standard deviation `mask_scale * sqrt(P - 1) / n_i`, so **`mask_scale` is relative to the
+client's shard size, not to the parameter scale** — a client with 5000 samples needs a
+`mask_scale` three orders of magnitude above one with 5. Every round records
+`secagg_mask_to_update_ratio`; a ratio near or below 1 means the masking is cosmetic.
+
+Cancellation is exact in real arithmetic, but the wire format is float32, so a large
+`mask_scale` leaves a rounding residue of roughly `1e-8 * mask_scale / 50` per coordinate.
+That is the trade-off the parameter buys: stronger blinding, slightly noisier aggregate. For a
+variant with no rounding to argue about, use `mpc_aggregation`.
+
+**`mpc_aggregation`** — fixed-point masking in `Z_modulus`, which is how deployed secure
+aggregation actually works, and which carries three failure modes a float simulation hides:
+
+| Failure mode | Trigger | What to watch |
+|---|---|---|
+| Quantization error | too few `quant_bits` | `mpc_agg_max_abs_error` rises above the floor |
+| Overflow | `modulus` too small for `sum_i n_i * x_i` | `mpc_overflow_rate` > 0; wraps silently |
+| Masks not cancelling | `dropout_rate` > 0 | error jumps by orders of magnitude |
+
+The whole protocol runs at `before_aggregate`, where the server holds every client's update.
+That placement is what lets the defense compute plain FedAvg alongside the protocol's output
+and record the exact gap as `mpc_agg_max_abs_error` — a strict numeric oracle rather than an
+accuracy threshold. The cost is that the client-side view is not simulated: an attack reading
+`ctx.updates_and_weights` still sees plaintext, because attacks attach before defenses on the
+same hook. Use `secure_aggregation` for adversary-view experiments and this one for
+arithmetic correctness.
+
+`dropout_rate` drops clients *after* they have masked. FLTest does not implement the threshold
+secret sharing that repairs this, so a run with dropouts is a run whose aggregate is knowingly
+wrong — the parameter exists to measure the failure mode, not to survive it.
+
+### Checking that the masks actually cancel
+
+Masking is either lossless or broken, and an accuracy threshold is too coarse to tell the
+difference. The `secagg_lossless` metamorphic relation is an **exact-equality** oracle: the
+masks are supposed to cancel whatever they are, so changing the mask seed must leave the global
+model bit-identical.
+
+```yaml
+testing:
+  metamorphic:
+    - {relation: secagg_lossless, parameter: defense.seed, values: [1, 2, 3],
+       metric: gm_weight_sum, tolerance: 0.0}
+```
+
+Use `gm_weight_sum`, which fingerprints the model directly — `accuracy` rounds two different
+models to the same number. The pitfall checker flags a secure-aggregation config that has no
+such relation (`P4_untested_secagg`).
+
+!!! note "Masking and robust aggregation are mutually exclusive"
+    `secure_aggregation` hides individual updates; `krum` / `trimmed_mean` / `median` need to
+    compare them client-by-client. A real server cannot do both. This simulation lets it,
+    because the server holds plaintext either way — so the pitfall checker flags the
+    combination (`P4_secagg_vs_robust`) rather than letting a config claim a defense stack
+    nobody can deploy.
+
+## Worked example: secure aggregation vs. gradient inversion
+
+`examples/configs/secure_agg.yaml` runs `dlg` with `source: shared_update` — an
+honest-but-curious server inverting the update it received — against three arms that differ
+only in what the client uploads:
+
+```bash
+fltest run examples/configs/secure_agg.yaml
+```
+
+Compare `reconstruction_mse` across `none`, `gradient_noise`, and `secure_agg`; higher is a
+worse reconstruction, i.e. a better defense. Check `secagg_mask_to_update_ratio` first — if it
+is not comfortably above 1, the arm proves nothing and `mask_scale` needs raising.
 
 !!! note "Backend support"
     Client-side and robust-aggregation defenses run on the **reference** and **Flower**

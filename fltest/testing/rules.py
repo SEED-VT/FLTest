@@ -51,3 +51,22 @@ def no_drop(reference: float, candidate: float, tolerance: float) -> Tuple[bool,
     drop = reference - candidate
     ok = drop <= tolerance
     return ok, f"reference={reference:.4f} candidate={candidate:.4f} drop={drop:.4f} (tol={tolerance})"
+
+
+def exactly_equal(pairs: List[Pair], tolerance: float) -> Tuple[bool, str]:
+    """Metric must be *identical* across every parameter value.
+
+    The other rules here are inequalities with slack, which is all an accuracy-based oracle
+    can support. This one is an equality: it applies where the transform provably must not
+    move the result at all — changing a secure-aggregation mask seed, for instance, since
+    the masks are supposed to cancel whatever they are. Pair it with ``tolerance: 0.0`` and
+    a metric that fingerprints the model (``gm_weight_sum``) rather than one that projects
+    it through a test set (``accuracy``), and any residue that fails to cancel shows up.
+    """
+    values = [v for _, v in pairs]
+    if len(values) < 2:
+        return True, "fewer than 2 values; trivially equal"
+    spread = max(values) - min(values)
+    ok = spread <= tolerance
+    detail = f"spread={spread:.6g} over {[p[0] for p in pairs]} (tol={tolerance})"
+    return ok, detail if ok else f"values differ: {detail}"

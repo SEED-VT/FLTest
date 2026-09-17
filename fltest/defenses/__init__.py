@@ -15,6 +15,8 @@ BUILTIN_DEFENSES = {
     "krum": "fltest.defenses.krum",
     "trimmed_mean": "fltest.defenses.trimmed_mean",
     "median": "fltest.defenses.median",
+    "secure_aggregation": "fltest.defenses.secure_aggregation",
+    "mpc_aggregation": "fltest.defenses.mpc_aggregation",
 }
 
 for _name, _module in BUILTIN_DEFENSES.items():

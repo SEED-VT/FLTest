@@ -73,8 +73,13 @@ class TestingSpec(BaseModel):
     metamorphic: List[MetamorphicRelation] = Field(default_factory=list)
 
 
-#: Defenses that replace the aggregation rule rather than perturbing a client update.
+#: Byzantine-robust aggregation rules.
 ROBUST_AGGREGATORS = ("krum", "trimmed_mean", "median")
+#: Defenses that replace the aggregation rule rather than perturbing a client update.
+#: ``mpc_aggregation`` belongs here because it computes the aggregate itself (in a finite
+#: ring) instead of letting the backend average; ``secure_aggregation`` does not, since its
+#: masks cancel inside plain FedAvg.
+AGGREGATION_DEFENSES = ROBUST_AGGREGATORS + ("mpc_aggregation",)
 
 # Knobs that participate in config fuzzing when given as a list.
 FUZZABLE_KNOBS = (
@@ -171,7 +176,7 @@ class RunSpec(BaseModel):
         so it belongs in the report rather than being inferred from the defense list.
         """
         for defense in self.defenses:
-            if defense.name in ROBUST_AGGREGATORS:
+            if defense.name in AGGREGATION_DEFENSES:
                 return defense.name
         return "fedavg"
 

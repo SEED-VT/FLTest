@@ -117,6 +117,16 @@ _METRIC_HEADERS = {
     "label_recovery": "label-rec",
     "membership_inference_auc": "mia-auc",
     "membership_loss_gap": "mia-gap",
+    "secagg_mask_to_update_ratio": "mask/upd",
+    "secagg_mask_residual": "mask-res",
+    "secagg_participants": "sa-parts",
+    "secagg_participant_mismatch": "sa-mismatch",
+    "secagg_client_outside_mask_set": "sa-outside",
+    "mpc_agg_max_abs_error": "mpc-err",
+    "mpc_agg_rel_error": "mpc-rel-err",
+    "mpc_overflow_rate": "mpc-ovf",
+    "mpc_dropouts": "mpc-drops",
+    "mpc_max_encoded_bits": "mpc-bits",
 }
 
 #: What each shortened column means, printed under the table for the metrics in play. A
@@ -133,6 +143,16 @@ _METRIC_GLOSS = {
     "label_recovery": "share of the victim's labels the attack recovered",
     "membership_inference_auc": "membership inference AUC, the chance a training sample looks more member-like than a held-out one; 0.5 is no leakage",
     "membership_loss_gap": "held-out loss minus training loss, the overfitting gap membership inference exploits",
+    "secagg_mask_to_update_ratio": "size of the mask relative to the update it hides; near zero means the mask is not hiding much",
+    "secagg_mask_residual": "what the masks left behind after aggregation; should be 0, anything else is a residue that moved the model",
+    "secagg_participants": "clients whose masked updates reached aggregation",
+    "secagg_participant_mismatch": "clients that masked but did not reach aggregation, whose masks therefore never cancelled",
+    "secagg_client_outside_mask_set": "a client masked against a peer set that did not include it",
+    "mpc_agg_max_abs_error": "largest absolute gap between the fixed-point aggregate and plain FedAvg",
+    "mpc_agg_rel_error": "that gap relative to the size of the aggregate",
+    "mpc_overflow_rate": "share of values that wrapped around the ring; anything above 0 means a silently wrong aggregate",
+    "mpc_dropouts": "clients removed after masking, whose pairwise masks stay in the sum",
+    "mpc_max_encoded_bits": "log2 of the largest encoded magnitude; above 53 the float64 encode starts dropping low-order bits",
 }
 
 #: Width the fixed-settings block wraps at, independent of how wide the table is.

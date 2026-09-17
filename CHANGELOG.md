@@ -5,6 +5,52 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.8.0
+
+**Secure aggregation.** Two new defenses, both building pairwise masks in the style of
+Bonawitz et al. (CCS 2017), where each pair of participants derives one shared vector that
+one party adds and the other subtracts.
+
+`secure_aggregation` masks in real arithmetic at `after_client_train`, and the masks cancel
+inside plain FedAvg. Because the mask is in place at `before_aggregate`, the `dlg` attack with
+`source: shared_update` — an honest-but-curious server inverting the update it received — now
+has something to fail against, which is what `examples/configs/secure_agg.yaml` compares
+three ways against no defense and against `gradient_noise`.
+
+`mpc_aggregation` is the one that can go wrong. It simulates the whole fixed-point protocol in
+`Z_modulus`, which is how deployed secure aggregation actually works and which carries three
+failure modes a float simulation hides: quantization error from too few `quant_bits`, silent
+wraparound when `modulus` cannot hold the summed aggregate, and masks that never cancel
+because `dropout_rate` removed a client after it masked. Each round records
+`mpc_agg_max_abs_error`, the exact gap against plain FedAvg.
+
+Neither defense demonstrates cryptographic security, and the docs say so rather than implying
+otherwise: masks come from a seed this process derives for both parties, there is no key
+agreement, no threshold secret sharing, and no dropout recovery. What is faithful is the
+simulated adversary view — what the server actually receives.
+
+Integer entries of the `state_dict` — BatchNorm's `num_batches_tracked`, a Hugging Face
+model's `position_ids` — pass through both defenses unmasked. A float mask cast back to int64
+truncates, so the halves would stop cancelling and the aggregate would drift with nothing to
+report it; those entries carry counters rather than learned information.
+
+**An equality oracle.** Every metamorphic relation so far was an inequality with slack, which
+is all an accuracy-based oracle can support. `secagg_lossless` is an exact equality: secure
+aggregation's masks are supposed to cancel whatever they are, so changing the mask seed must
+leave the global model bit-identical. Pair it with `metric: gm_weight_sum` and `tolerance: 0.0`
+and a residue that survives aggregation shows up, where an accuracy threshold would round two
+different models to the same number.
+
+**Reporting.** The secure-aggregation and MPC metrics have short column headers and
+legend entries, so the run matrix stays readable and each field explains itself.
+
+**Pitfall checker.** Three new detectors, all for failures that produce a finite,
+plausible-looking aggregate rather than an error: masking configured with no mask or a ring too
+small for its precision (`P4_misconfig_secagg`), secure aggregation with no `secagg_lossless`
+relation checking that it works (`P4_untested_secagg`), and masking combined with robust
+aggregation (`P4_secagg_vs_robust`) — a real server cannot compare updates it cannot see, so a
+config claiming both over-states the stack even though the simulation runs it happily.
+
 ## 0.7.0
 
 **Aggregate result override.** On reference and Flower, `on_aggregate` may now replace

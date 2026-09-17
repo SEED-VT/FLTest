@@ -34,6 +34,25 @@ _COUNTER_EXPERIMENTS: Dict[str, str] = {
         "  - {name: membership_inference, params: {target_client: 0}}\n"
         "  - {name: dlg, params: {target_round: 1, iters: 300}}"
     ),
+    "P4_misconfig_secagg": (
+        "# give the ring enough headroom for sample-weighted updates, and no dropouts\n"
+        "defenses:\n"
+        "  - {name: mpc_aggregation, params: {quant_bits: 16, modulus: 4294967296, "
+        "dropout_rate: 0.0}}\n"
+        "# then confirm the arithmetic: mpc_agg_max_abs_error should sit at the "
+        "quantization floor"
+    ),
+    "P4_untested_secagg": (
+        "# the masks either cancel exactly or they do not - check it with an equality oracle\n"
+        "testing:\n  metamorphic:\n    - {relation: secagg_lossless, parameter: defense.seed, "
+        "values: [1, 2, 3], metric: gm_weight_sum, tolerance: 0.0}"
+    ),
+    "P4_secagg_vs_robust": (
+        "# split the stack: a masked server cannot inspect updates client-by-client\n"
+        "runs:\n"
+        "  - {framework: reference, name: secagg, defenses: [{name: secure_aggregation}]}\n"
+        "  - {framework: reference, name: robust, defenses: [{name: median}]}"
+    ),
     "P6_user_expertise": "defenses:\n  - {name: krum, params: {num_byzantine: 1}}",
 }
 
