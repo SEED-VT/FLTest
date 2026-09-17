@@ -5,6 +5,13 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.8.1
+
+**Fixed.** `P4_secagg_vs_robust` flagged `secure_aggregation` combined with robust
+aggregation but let `mpc_aggregation` through, although the argument is the same. A server
+that receives ring elements can no more compare updates client-by-client than one holding
+real-valued masks. The detector now covers both masking defenses.
+
 ## 0.8.0
 
 **Secure aggregation.** Two new defenses, both building pairwise masks in the style of

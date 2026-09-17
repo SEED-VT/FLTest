@@ -102,3 +102,18 @@ def test_pitfall_checker_flags_masking_combined_with_robust_aggregation():
     """A masked server cannot compare updates client-by-client; the simulation lets it."""
     cfg = _secagg_cfg(defenses=[{"name": "secure_aggregation"}, {"name": "median"}])
     assert "P4_secagg_vs_robust" in {f.pitfall for f in check_config(cfg)}
+
+
+def test_masking_plus_robust_aggregation_is_flagged_for_both_defenses():
+    """An MPC server receives ring elements, so it can no more compare updates than a
+    server holding real-valued masks. Both masking defenses must trip the same finding."""
+    from fltest.core.config import TestConfig
+    from fltest.pitfalls import check_config
+
+    for masking in ("secure_aggregation", "mpc_aggregation"):
+        cfg = TestConfig(
+            name="t", defenses=[{"name": masking}, {"name": "median"}],
+            runs=[{"framework": "reference"}],
+        )
+        found = {f.pitfall for f in check_config(cfg)}
+        assert "P4_secagg_vs_robust" in found, f"{masking} + median was not flagged"

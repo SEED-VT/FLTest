@@ -183,10 +183,12 @@ def check_config(config: TestConfig) -> List[Finding]:
     # P4 (continued) — masking and per-client robust aggregation are mutually exclusive in a
     # real deployment. Both "work" here because the simulation hands the server plaintext, so
     # a config combining them measures a system nobody can build.
-    if "secure_aggregation" in defense_names and (defense_names & set(ROBUST_AGGREGATORS)):
+    # `secagg_names` covers both masking defenses: an MPC server receives ring elements and
+    # can no more compare them client-by-client than it can compare real-valued masks.
+    if secagg_names and (defense_names & set(ROBUST_AGGREGATORS)):
         findings.append(Finding(
             "P4_secagg_vs_robust", "Secure aggregation combined with robust aggregation", "medium",
-            "secure_aggregation hides individual updates, but "
+            f"{sorted(secagg_names)} hides individual updates, but "
             f"{sorted(defense_names & set(ROBUST_AGGREGATORS))} needs to compare them "
             "client-by-client. A real server cannot do both; this simulation lets it, so the "
             "combination over-states what the defense stack delivers.",
