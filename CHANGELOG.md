@@ -5,6 +5,17 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.6.0
+
+**Identified aggregation context.** The `before_aggregate` hook now includes each received
+client's stable ID, update, and sample count in `ctx.client_submissions` on reference and
+Flower. Flower also provides the current global model in `ctx.global_state`. This lets
+history-based defenses associate updates with the same client across rounds without
+assuming an arrival order. The existing `ctx.updates_and_weights` input and built-in
+robust defenses are unchanged. Custom Flower clients without a reported ID still
+aggregate normally and expose `client_id=None`. NVFlare still does not emit
+`before_aggregate`.
+
 ## 0.5.0
 
 **Model replacement.** Added the train-and-scale model-replacement attack. It boosts a

@@ -45,8 +45,15 @@ Relevant `HookContext` fields by phase:
 | `global_state` | rounds | current global params (list of ndarrays) |
 | `client_update` | `after_client_train` | this client's update (attacks/defenses mutate) |
 | `updates_and_weights` | `before_aggregate` | `[(update, n), …]` (robust agg replaces this) |
+| `client_submissions` | `before_aggregate` | received `(client_id, update, num_samples)` records in arrival order; observational, with stable client IDs |
 | `model`, `test_data` | `after_round` | live model + central test loader |
 | `metrics`, `history` | all | `ctx.record(**kv)` writes here |
+
+On reference and Flower, `before_aggregate` also receives `global_state`, the model used
+to start that round's client training. `client_submissions` preserves the identity of each
+received update; `updates_and_weights` remains the mutable input to aggregation, so existing
+robust defenses are unchanged. They align at hook entry, but a preceding hook may replace
+or reorder `updates_and_weights`.
 
 ## 4. Hook plugins (`HookPlugin`)
 

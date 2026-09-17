@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import numpy as np
 import torch
 
-from fltest.core import HookContext, HookRunner
+from fltest.core import ClientSubmission, HookContext, HookRunner
 from fltest.core.config import RunSpec
 from fltest.core.registry import register_framework
 from fltest.data.models import get_model, model_weight_sum, test, train
@@ -70,6 +70,7 @@ class ReferenceAdapter(FrameworkAdapter):
             hook_runner.run("before_round", ctx_r)
 
             updates_and_weights: List[tuple] = []
+            client_submissions: List[ClientSubmission] = []
             client_hook_metrics: Dict[str, Any] = {}
             for cid in range(spec.num_clients):
                 loader = c2loader[cid]
@@ -104,11 +105,14 @@ class ReferenceAdapter(FrameworkAdapter):
                 update = ctx_post.client_update if ctx_post.client_update is not None else update
                 client_hook_metrics.update(ctx_post.metrics)
                 updates_and_weights.append((update, n_samples))
+                client_submissions.append(ClientSubmission(cid, tuple(update), n_samples))
 
             # --- aggregation ---
             ctx_agg = HookContext(
                 cfg=spec, framework=self.name, run_name=spec.run_name, round=rnd,
-                updates_and_weights=updates_and_weights, global_state=global_params, history=history,
+                updates_and_weights=updates_and_weights,
+                client_submissions=tuple(client_submissions),
+                global_state=global_params, history=history,
             )
             hook_runner.run("before_aggregate", ctx_agg)
             uw = ctx_agg.updates_and_weights if ctx_agg.updates_and_weights is not None else updates_and_weights

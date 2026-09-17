@@ -124,6 +124,18 @@ Declare it in `BUILTIN_DEFENSES` in `fltest/defenses/__init__.py`
 defenses: [{name: geometric_median}]
 ```
 
+For defenses that compare the same clients across rounds, `before_aggregate` also exposes
+`ctx.client_submissions`: an ordered tuple of `ClientSubmission(client_id, update,
+num_samples)` records. Each record corresponds to the same-position entry in
+`ctx.updates_and_weights` **when the hook begins**. `ctx.global_state` contains the model
+from which those clients trained. The submission records describe received updates;
+continue to change `ctx.updates_and_weights` to control what is aggregated. If an earlier
+hook replaces or reorders that legacy list, later hooks should not infer that its positions
+still correspond to `ctx.client_submissions`. Copy arrays before retaining historical
+updates, since the ndarray values are mutable. This context is available on reference and
+Flower, not NVFlare. FLTest's Flower clients report stable integer IDs; if a custom Flower
+client does not report one, its record has `client_id=None` and still aggregates normally.
+
 ## Port a metric
 
 Subclass `MetricListenerBaseClass`, hook where the data you need exists, and `ctx.record(...)`:

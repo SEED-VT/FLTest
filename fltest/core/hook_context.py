@@ -9,7 +9,21 @@ the same context shape, a hook written once runs unchanged across all frameworks
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+
+@dataclass(frozen=True)
+class ClientSubmission:
+    """Identity and sample weight of an update received for aggregation.
+
+    ``update`` uses FLTest's usual ordered ndarray representation. The records describe
+    the received submissions; ``updates_and_weights`` remains the mutable aggregation
+    input for existing plugins.
+    """
+
+    client_id: Optional[int]
+    update: Tuple[Any, ...]
+    num_samples: int
 
 
 @dataclass
@@ -35,6 +49,7 @@ class HookContext:
     client_update: Optional[Any] = None           # this client's update (mutable by attacks/defenses)
     num_samples: Optional[int] = None
     updates_and_weights: Optional[List[tuple]] = None  # [(update, n), ...] at aggregation
+    client_submissions: Optional[Tuple[ClientSubmission, ...]] = None
     new_global_state: Optional[Any] = None
     model: Optional[Any] = None                   # live nn.Module when a backend can expose it
 

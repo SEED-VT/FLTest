@@ -17,7 +17,7 @@ from flwr.common import Code, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 
-from fltest.core import HookContext, HookRunner
+from fltest.core import ClientSubmission, HookContext, HookRunner
 from fltest.core.config import RunSpec
 from fltest.data.models import get_model, model_weight_sum, test
 from fltest.data.utils import aggregate_ndarrays
@@ -31,20 +31,34 @@ def fit_config(server_round: int) -> Dict[str, int]:
 
 class HookedFedAvg(FedAvg):
     def __init__(self, hook_runner: HookRunner, spec: RunSpec, history: Dict, **kwargs):
+        initial_parameters = kwargs.get("initial_parameters")
         super().__init__(**kwargs)
         self._hooks = hook_runner
         self._spec = spec
         self._history = history
         self._last_fit_metrics: Dict[str, float] = {}
+        self._global_state = (
+            parameters_to_ndarrays(initial_parameters) if initial_parameters is not None else None
+        )
 
     def aggregate_fit(self, server_round, results, failures):
         successful = [(p, r) for p, r in results if r.status.code == Code.OK]
         if not successful:
             return None, {}
 
-        updates_and_weights = [
-            (parameters_to_ndarrays(r.parameters), r.num_examples) for _, r in successful
-        ]
+        updates_and_weights = []
+        client_submissions = []
+        for _, response in successful:
+            client_id = response.metrics.get("cid")
+            if not isinstance(client_id, int) or isinstance(client_id, bool):
+                # Custom Flower clients may not report FLTest's partition ID. Preserve
+                # their existing aggregation behavior without inventing an identity.
+                client_id = None
+            update = parameters_to_ndarrays(response.parameters)
+            updates_and_weights.append((update, response.num_examples))
+            client_submissions.append(
+                ClientSubmission(client_id, tuple(update), response.num_examples)
+            )
 
         self._hooks.run("before_round", HookContext(
             cfg=self._spec, framework="flwr", run_name=self._spec.run_name, round=server_round,
@@ -53,11 +67,13 @@ class HookedFedAvg(FedAvg):
         ctx = HookContext(
             cfg=self._spec, framework="flwr", run_name=self._spec.run_name, round=server_round,
             updates_and_weights=updates_and_weights,
+            client_submissions=tuple(client_submissions), global_state=self._global_state,
         )
         self._hooks.run("before_aggregate", ctx)
         uw = ctx.updates_and_weights if ctx.updates_and_weights is not None else updates_and_weights
 
         aggregated = aggregate_ndarrays(uw)
+        self._global_state = aggregated
         ctx.new_global_state = aggregated
         self._hooks.run("on_aggregate", ctx)
         self._hooks.run("after_aggregate", ctx)
