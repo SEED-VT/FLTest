@@ -23,6 +23,7 @@ Two flavors compose through the same hooks:
 | `krum` | robust aggregation (select) | `before_aggregate` | `num_byzantine` (1) |
 | `trimmed_mean` | robust aggregation (coordinate trim) | `before_aggregate` | `trim` (1) |
 | `median` | robust aggregation (coordinate median) | `before_aggregate` | — |
+| `fldetector` | history-based client filtering | `before_round`, `before_aggregate`, `after_aggregate` | `window_size` (10), `start_round` (50), `max_clusters` (10), `gap_samples` (20) |
 
 ## How each works
 
@@ -42,6 +43,29 @@ across clients, then averages the rest.
 
 **`median`** — coordinate-wise median across client updates. Simple and strong against a
 Byzantine minority.
+
+**`fldetector`** — compares each client's model delta with a limited-memory BFGS
+prediction from earlier rounds. It scores inconsistencies over `window_size` rounds and
+uses gap statistics and two-cluster k-means to identify the high-score group. Identified
+clients are removed from the current aggregation and excluded from later rounds. This is
+an *online* variant: unlike the [FLDetector paper](https://doi.org/10.1145/3534678.3539231),
+it does not restart training after detection. It requires unique stable client IDs and
+full client participation until detection; custom Flower clients must report their `cid`.
+The default `start_round=50` follows the paper's warm-up choice, so shorter experiments
+should lower it. At least `window_size + 2` rounds are needed to form the history.
+
+To combine detection with a robust rule, place it first:
+
+```yaml
+defenses:
+  - {name: fldetector, params: {window_size: 10, start_round: 50}}
+  - {name: median}
+```
+
+`fldetector_scores`, `fldetector_detected_clients`, and
+`fldetector_detected_count` are recorded in the detection round's metrics. The detector
+fails explicitly if submission IDs are missing or an earlier hook changes the update
+list's alignment. It is not available on NVFlare.
 
 !!! note "Backend support"
     Client-side and robust-aggregation defenses run on the **reference** and **Flower**

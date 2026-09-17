@@ -33,7 +33,12 @@ def build_hook_runner(spec: RunSpec, load_env_hooks: bool = True) -> HookRunner:
     for atk in spec.attacks:
         ATTACKS.get(atk.name)(target_clients=atk.target_clients, **atk.params).attach(runner)
 
-    for dfn in spec.defenses:
+    for index, dfn in enumerate(spec.defenses):
+        if dfn.name == "fldetector" and any(
+            prior.name in ("krum", "trimmed_mean", "median")
+            for prior in spec.defenses[:index]
+        ):
+            raise ValueError("fldetector must precede the robust aggregator in defenses")
         DEFENSES.get(dfn.name)(**dfn.params).attach(runner)
 
     if load_env_hooks:

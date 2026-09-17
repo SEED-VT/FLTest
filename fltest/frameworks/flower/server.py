@@ -38,6 +38,7 @@ class HookedFedAvg(FedAvg):
         self._spec = spec
         self._history = history
         self._last_fit_metrics: Dict[str, float] = {}
+        self._last_server_metrics: Dict = {}
         self._client_id_by_proxy: Dict[str, int] = {}
         self._global_state = (
             parameters_to_ndarrays(initial_parameters) if initial_parameters is not None else None
@@ -117,6 +118,7 @@ class HookedFedAvg(FedAvg):
         ctx.new_global_state = aggregated
         self._global_state = aggregated
         self._hooks.run("after_aggregate", ctx)
+        self._last_server_metrics = dict(ctx.metrics)
 
         # Surface client-side hook metrics (e.g. DLG reconstruction) by averaging numerics.
         acc: Dict[str, List[float]] = defaultdict(list)
@@ -154,6 +156,7 @@ def get_server_app(spec: RunSpec, hook_runner: HookRunner, history: Dict, test_l
         strat_metrics = getattr(evaluate_fn, "_strategy", None)
         if strat_metrics is not None:
             ctx.metrics.update(strat_metrics._last_fit_metrics)
+            ctx.metrics.update(strat_metrics._last_server_metrics)
         hook_runner.run("after_round", ctx)
         if server_round > 0:
             history[server_round] = dict(ctx.metrics)

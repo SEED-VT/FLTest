@@ -5,6 +5,18 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.9.0
+
+**Online FLDetector defense.** Added a hook-based detector for the reference and Flower
+backends. It compares each client's current model delta against a history-based L-BFGS
+prediction, averages normalized inconsistency over a configurable window, and uses gap
+statistics plus two-cluster k-means to identify suspicious clients. Detected submissions
+are filtered before aggregation; `before_round` excludes those clients in later rounds.
+This online variant does not restart training from the initial model as in the paper.
+When paired with Krum, trimmed mean, or median, list `fldetector` first so filtering
+precedes the aggregation rule. Flower now carries server-side aggregation-hook metrics
+into round history.
+
 ## 0.8.0
 
 **Before-round client selection.** The `before_round` hook now receives all eligible
