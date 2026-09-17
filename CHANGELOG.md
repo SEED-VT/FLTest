@@ -5,6 +5,31 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.10.1
+
+**Documentation.** Swept every public page against the code after four collaborator merges.
+
+`docs/metrics.md` had none of the ten secure-aggregation, MPC, or FLDetector metrics, which
+now have their own tables, including which of them are structured values that stay in the
+JSON report rather than becoming columns. The catalog pasted into `docs/installation.md` had
+drifted back to a list that predates membership inference, model replacement, and
+FLDetector, and is regenerated from the registry. The README did not mention `fldetector`.
+
+`examples/configs/fldetector.yaml` is new, since the defense shipped without a runnable
+example. It gives two of eight clients a sign-flip attack and runs undefended, `median`, and
+`fldetector` arms. The undefended model sits at chance for all eight rounds, `median`
+suppresses the attack from the first round and reaches 0.9023, and `fldetector` collapses
+until round 5, flags clients `[0, 1]`, which are exactly the two attackers, and recovers to
+0.8809. `docs/defenses.md` carries that comparison.
+
+`docs/extending.md` now states that a new metric needs an entry in `_METRIC_HEADERS` and
+`_METRIC_GLOSS`, which two merges in a row had missed.
+
+**Tests.** `tests/test_docs_consistency.py` checks that the installation catalog matches the
+registry, that every plugin appears on its reference page and in the README, that every
+metamorphic relation and pitfall id is documented, and that no example config is orphaned.
+It caught two configs no page referenced.
+
 ## 0.10.0
 
 **Reporting.** A metric that is not a number no longer becomes a table column. FLDetector

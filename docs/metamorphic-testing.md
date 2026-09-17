@@ -28,11 +28,11 @@ To isolate the swept parameter, any *other* list-valued knob is collapsed to its
 
 `exactly_equal` is the odd one out. The other three are inequalities with slack, which is
 all an accuracy-based oracle can support: they catch a defense that is *badly* wrong.
-`secagg_lossless` applies where the transform provably must not move the result at all —
-secure aggregation's masks are supposed to cancel whatever they are, so a different mask
-seed must leave the global model bit-identical. Give it `tolerance: 0.0` and a metric that
-fingerprints the model (`gm_weight_sum`) rather than one that projects it through a test
-set (`accuracy`, which rounds two different models to the same number):
+`secagg_lossless` applies where the transform provably must not move the result at all.
+Secure aggregation's masks are supposed to cancel whatever they are, so a different mask
+seed must leave the global model bit-identical. Give it `tolerance: 0.0`, and a metric that
+fingerprints the model rather than one that projects it through a test set. `gm_weight_sum`
+does that, where `accuracy` rounds two different models to the same number:
 
 ```yaml
 defenses: [{name: secure_aggregation, params: {mask_scale: 5000.0, seed: 1}}]
@@ -49,8 +49,9 @@ residue; if this fails by a hair, lower `mask_scale` before suspecting the proto
 
 ## Sweeping plugin parameters
 
-For `attack_strength` / `dp_noise`, point `parameter` at an attack or defense param using a
-dotted path — `attack.<param>` targets the first attack, `defense.<param>` the first defense:
+For `attack_strength` and `dp_noise`, point `parameter` at an attack or defense parameter
+using a dotted path. `attack.<param>` targets the first attack and `defense.<param>` the
+first defense:
 
 ```yaml
 attacks: [{name: backdoor, params: {infection_rate: 0.1}}]

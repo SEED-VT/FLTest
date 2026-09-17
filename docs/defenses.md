@@ -51,12 +51,14 @@ Byzantine minority.
 
 ## Secure aggregation
 
-Both variants build **pairwise masks** in the style of Bonawitz et al. (CCS 2017): every pair
+Both variants build **pairwise masks** in the style of Bonawitz et al. (CCS 2017). Every pair
 of participants derives one shared pseudo-random vector, the lower-indexed party adds it and
-the higher-indexed party subtracts it, so the masks telescope to zero once every participant's
-contribution is summed. Each mask is a pure function of `(seed, round, client pair, layer)`, so
-both parties derive it independently — which is what lets the Flower backend, where client
-hooks run in separate Ray workers, use them at all.
+the higher-indexed party subtracts it. The masks therefore telescope to zero once every
+participant's contribution is summed.
+
+Each mask is a pure function of `(seed, round, client pair, layer)`, so both parties derive it
+independently. That is what lets the Flower backend use them at all, since its client hooks
+run in separate Ray workers.
 
 !!! warning "What a single-process simulation can and cannot show"
     The masks come from a seed this process derives for both parties. There is no key
@@ -83,7 +85,7 @@ where the `dlg` attack with `source: shared_update` reads the uploaded update.
 
 One consequence decides whether a configuration hides anything at all. The on-the-wire mask
 has standard deviation `mask_scale * sqrt(P - 1) / n_i`, so **`mask_scale` is relative to the
-client's shard size, not to the parameter scale** — a client with 5000 samples needs a
+client's shard size rather than to the parameter scale**. A client with 5000 samples needs a
 `mask_scale` three orders of magnitude above one with 5. Every round records
 `secagg_mask_to_update_ratio`; a ratio near or below 1 means the masking is cosmetic.
 
@@ -93,7 +95,7 @@ That is the trade-off the parameter buys: stronger blinding, slightly noisier ag
 variant with no rounding to argue about, use `mpc_aggregation`.
 
 **`mpc_aggregation`** — fixed-point masking in `Z_modulus`, which is how deployed secure
-aggregation actually works, and which carries three failure modes a float simulation hides:
+aggregation actually works. It carries three failure modes a float simulation hides:
 
 | Failure mode | Trigger | What to watch |
 |---|---|---|
@@ -110,8 +112,8 @@ same hook. Use `secure_aggregation` for adversary-view experiments and this one 
 arithmetic correctness.
 
 `dropout_rate` drops clients *after* they have masked. FLTest does not implement the threshold
-secret sharing that repairs this, so a run with dropouts is a run whose aggregate is knowingly
-wrong — the parameter exists to measure the failure mode, not to survive it.
+secret sharing that repairs this, so a run with dropouts produces an aggregate that is
+knowingly wrong. The parameter exists to measure that failure mode rather than to survive it.
 
 ### Checking that the masks actually cancel
 
@@ -140,9 +142,9 @@ such relation (`P4_untested_secagg`).
 
 ## Worked example: secure aggregation vs. gradient inversion
 
-`examples/configs/secure_agg.yaml` runs `dlg` with `source: shared_update` — an
-honest-but-curious server inverting the update it received — against three arms that differ
-only in what the client uploads:
+`examples/configs/secure_agg.yaml` runs `dlg` with `source: shared_update`, which is an
+honest-but-curious server inverting the update it received. Three arms differ only in what
+the client uploads:
 
 ```bash
 fltest run examples/configs/secure_agg.yaml
@@ -173,6 +175,29 @@ defenses:
 `fldetector_detected_count` are recorded in the detection round's metrics. The detector
 fails explicitly if submission IDs are missing or an earlier hook changes the update
 list's alignment. It is not available on NVFlare.
+
+### Worked example
+
+`examples/configs/fldetector.yaml` gives two of eight clients a sign-flip attack and runs
+the same setup three ways:
+
+```bash
+fltest run examples/configs/fldetector.yaml
+```
+
+| run | final accuracy | per-round accuracy |
+|-----|:--------------:|--------------------|
+| undefended | 0.0938 | 0.119 → 0.109 → 0.094 → 0.094 → 0.094 → 0.094 → 0.094 → 0.094 |
+| `median` | 0.9023 | 0.763 → 0.856 → 0.870 → 0.878 → 0.881 → 0.889 → 0.900 → 0.902 |
+| `fldetector` | 0.8809 | 0.119 → 0.109 → 0.094 → 0.094 → **0.791** → 0.855 → 0.856 → 0.881 |
+
+The traces show what separates the two defenses. Median suppresses the attack from the
+first round and never lets the model collapse. FLDetector has no history yet, so the model
+collapses to chance and stays there. At round 5 it flags clients `[0, 1]`, which are exactly
+the two attackers, excludes them, and recovers.
+
+Pick median when you only need the model to survive. Pick FLDetector when you need to know
+who attacked, at the cost of the rounds it takes to find out.
 
 !!! note "Backend support"
     Client-side and robust-aggregation defenses run on the **reference** and **Flower**

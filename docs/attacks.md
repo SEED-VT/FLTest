@@ -53,8 +53,9 @@ estimate when clients have unequal sample weights; pass the exact factor explici
 that case. NVFlare does not run client-side hooks and cannot apply this attack.
 
 The runnable comparison uses one of four clients as the attacker and boosts its backdoored
-model only in round 3. The automatic scale is 4.0. In the verified run, replacement raised
-ASR sharply on both supported backends while retaining most clean accuracy:
+model only in round 3, at an automatic scale of 4.0. Replacement takes attack success from
+0.2930 to 1.0000 on the reference backend and from 0.2724 to 0.9892 on Flower, costing
+0.0196 and 0.0361 of clean accuracy:
 
 | Backend | Attack | ASR | Accuracy |
 |---------|--------|----:|---------:|

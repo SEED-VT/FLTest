@@ -1,0 +1,32 @@
+# FLDetector: catch the malicious clients rather than out-vote them.
+#
+# Robust aggregation such as median discards outlying updates every round without ever
+# saying who sent them. FLDetector instead predicts each client's next update from its own
+# history, scores how far the real update falls from that prediction, and clusters the
+# scores to name the clients it will exclude.
+#
+# The defaults follow the paper, where start_round is 50. A demo cannot wait that long, so
+# this lowers the warm-up and the window. At least window_size + 2 rounds of history are
+# needed before the detector will speak.
+#
+# Two of eight clients flip the sign of their update, which is the signal the detector has
+# to separate from honest disagreement.
+name: fldetector_demo
+device: cpu
+dataset: mnist
+model_name: MLP
+num_clients: 8
+num_rounds: 8
+client_lr: 0.05
+dataset_partitions: 40
+max_test_data_size: 1024
+metrics: [accuracy, loss, per_client]
+
+attacks:
+  - {name: sign_flip, params: {scale: 3.0}, target_clients: [0, 1]}
+
+runs:
+  - {framework: reference, name: undefended, defenses: []}
+  - {framework: reference, name: median, defenses: [{name: median}]}
+  - {framework: reference, name: fldetector,
+     defenses: [{name: fldetector, params: {window_size: 3, start_round: 5, gap_samples: 5}}]}

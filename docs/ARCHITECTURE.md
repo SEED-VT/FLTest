@@ -59,7 +59,7 @@ Parameters use one canonical representation everywhere — an ordered list of nu
 so plugins are framework-agnostic. Registration order means attacks attach before defenses,
 so a defense sanitizes a tampered update on the same hook.
 
-At `before_aggregate`, reference and Flower additionally expose `client_submissions`,
+At `before_aggregate`, reference and Flower also expose `client_submissions`,
 an identity-preserving view of the received updates, and the current `global_state`.
 The existing `updates_and_weights` tuples remain the mutable aggregation input. Flower
 obtains stable client IDs from FLTest client fit results rather than treating result

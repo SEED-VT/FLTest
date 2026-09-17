@@ -173,6 +173,13 @@ Declare it in `BUILTIN_METRICS` in `fltest/metrics/__init__.py`
 `metrics: [accuracy, loss, grad_norm]`. The metric is now assertable in differential and
 metamorphic tests (`metric: client_grad_norm`).
 
+**Give a new metric a column header and a description.** `_METRIC_HEADERS` and
+`_METRIC_GLOSS` in `fltest/testing/report.py` shorten the column and explain it in the
+legend printed under the run matrix. A metric with neither still appears, but its full
+name becomes the column width and nothing explains it. Record a plain number if you want a
+column: a list or a mapping stays in the JSON report, which is where `fldetector_scores`
+lives.
+
 ## Prototype without editing the package: `FLTEST_HOOKS`
 
 For quick experiments you don't have to add files to the package. Write a hook file anywhere

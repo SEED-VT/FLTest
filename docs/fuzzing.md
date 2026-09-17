@@ -44,6 +44,19 @@ runs:
 - **Pitfall checker** reads the lists directly: `data_distribution: [iid, dirichlet]` clears
   the "IID-only" pitfall; `dataset: [mnist, cifar10]` clears "MNIST-only".
 
+## A runnable one
+
+`examples/configs/fuzz_demo.yaml` fuzzes a single knob and crosses it with two runs:
+
+```bash
+fltest run examples/configs/fuzz_demo.yaml
+```
+
+One list (`data_distribution: [iid, dirichlet]`) crossed with two runs (undefended against
+median-defended, sharing one backdoor) gives four experiments from one file. The run matrix
+puts `distribution` and `defense` in columns, since those are what differ, and states the
+rest once above the table.
+
 ## Preview the grid
 
 ```python

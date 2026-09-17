@@ -173,6 +173,20 @@ that isn't on Hugging Face, build those dicts yourself (any object exposing
 `{"img","label"}` batches works) and call `build_dataloaders(...)`, or add a new partitioner
 to `PARTITIONERS`.
 
+## Sweeping several at once
+
+`examples/configs/datasets_showcase.yaml` crosses three datasets with two distributions,
+which is six runs from one file:
+
+```bash
+fltest run      examples/configs/datasets_showcase.yaml
+fltest pitfalls examples/configs/datasets_showcase.yaml
+```
+
+It is also a useful input to the pitfall checker, because sweeping more than one dataset
+and more than one distribution clears the MNIST-only and IID-only findings that a
+single-dataset config raises.
+
 ## Add a new partitioner
 
 `PARTITIONERS` maps a name to a factory `f(num_partitions, **kwargs) -> Partitioner`:

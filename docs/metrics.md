@@ -31,6 +31,37 @@ The test subset size is `max_test_data_size`. These three appear in `final` for 
 Add `per_client` to `metrics:` to enable personalized evaluation. Attack metrics appear
 automatically when the relevant attack is configured.
 
+### Secure aggregation
+
+Masking either cancels exactly or it does not, and these metrics are how you tell which,
+since a residue moves the model without necessarily moving accuracy.
+
+| Metric | Produced by | Meaning |
+|--------|-------------|---------|
+| `secagg_mask_residual` | `secure_aggregation` | what the masks left behind after aggregation; 0 means they cancelled |
+| `secagg_mask_to_update_ratio` | `secure_aggregation` | size of the mask relative to the update it hides; near 0 means the masking is cosmetic |
+| `secagg_participants` | `secure_aggregation` | clients whose masked updates reached aggregation |
+| `secagg_participant_mismatch` | `secure_aggregation` | clients that masked but never reached aggregation, so their masks never cancelled |
+| `secagg_client_outside_mask_set` | `secure_aggregation` | a client masked against a peer set that did not include it |
+| `mpc_agg_max_abs_error` | `mpc_aggregation` | largest absolute gap between the fixed-point aggregate and plain FedAvg |
+| `mpc_agg_rel_error` | `mpc_aggregation` | that gap relative to the size of the aggregate |
+| `mpc_overflow_rate` | `mpc_aggregation` | share of values that wrapped around the ring; above 0 means a silently wrong aggregate |
+| `mpc_dropouts` | `mpc_aggregation` | clients removed after masking, whose pairwise masks stay in the sum |
+| `mpc_max_encoded_bits` | `mpc_aggregation` | log2 of the largest encoded magnitude; above 53 the float64 encode drops low-order bits |
+
+### Detection
+
+| Metric | Produced by | Meaning |
+|--------|-------------|---------|
+| `fldetector_detected_count` | `fldetector` | how many clients were flagged and excluded |
+| `fldetector_detected_clients` | `fldetector` | the client ids it flagged |
+| `fldetector_scores` | `fldetector` | each client's suspicion score for that round |
+
+`fldetector` records these in the **detection round**, not every round, so they appear in
+`history` at that round rather than in `final`. The run matrix shows
+`fldetector_detected_count` as a column when it is present. The other two are a list and a
+mapping, so they stay in the JSON report rather than becoming fixed-width cells.
+
 ## Run parameters recorded beside the metrics
 
 Each run's `params` in the JSON report carries its fully resolved settings, which includes

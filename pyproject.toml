@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fltest"
-version = "0.10.0"
+version = "0.10.1"
 description = "FLTest: a testbed for evaluating privacy and robustness of Privacy-Preserving Federated Learning (PPFL)."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"

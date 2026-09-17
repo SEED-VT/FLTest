@@ -48,7 +48,8 @@ makes a rigorous setup the default and *checks* for the common pitfalls.
 - **Defenses (PPFL):** `gradient_noise` (DP-style clip+noise), `norm_clip`, robust
   aggregation `krum` / `trimmed_mean` / `median`, and secure aggregation
   `secure_aggregation` (float pairwise masking) / `mpc_aggregation` (fixed point in a
-  finite ring, which surfaces quantization, overflow, and dropout errors).
+  finite ring, which surfaces quantization, overflow, and dropout errors). `fldetector`
+  names the malicious clients and excludes them, rather than out-voting them each round.
 - **Differential testing:** same config across frameworks must agree within tolerance
   (cross-framework parity); or the same spec run twice must be identical (determinism).
 - **Metamorphic testing:** `clients_scale` (N→2N), `rounds_monotonic`, `attack_strength`,
@@ -93,6 +94,9 @@ fltest run examples/configs/membership_inference.yaml
 fltest run examples/configs/dlg.yaml               # gradient inversion
 fltest run examples/configs/model_replacement.yaml # boosted backdoor, reference + Flower
 fltest run examples/configs/secure_agg.yaml        # DLG vs no defense / DP noise / masking
+
+# detection: name the attackers instead of out-voting them
+fltest run examples/configs/fldetector.yaml
 
 # heterogeneity: one client per real writer, and one topic per client
 fltest run examples/configs/femnist_natural.yaml
