@@ -29,6 +29,10 @@ class FlowerClient(NumPyClient):
             num_classes=spec.num_classes, deterministic=spec.deterministic,
         ).to(spec.device)
 
+    def get_properties(self, config):
+        """Expose the stable partition ID before fit for selective rounds."""
+        return {"cid": self.cid}
+
     def fit(self, parameters, config):
         spec = self.spec
         set_parameters(self.net, parameters)

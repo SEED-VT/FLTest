@@ -136,6 +136,14 @@ updates, since the ndarray values are mutable. This context is available on refe
 Flower, not NVFlare. FLTest's Flower clients report stable integer IDs; if a custom Flower
 client does not report one, its record has `client_id=None` and still aggregates normally.
 
+For round-level participation, use `before_round` and assign a nonempty list or tuple of
+unique client IDs to `ctx.selected_clients`. It starts with all IDs in
+`range(ctx.cfg.num_clients)` on reference and Flower; setting it to `None` retains all.
+Invalid IDs, duplicates, or an empty selection fail before dispatch. Flower asks clients
+for their `cid` property only when selection differs from the default; custom clients
+must implement `get_properties` for this use. NVFlare's replayed hook cannot select
+clients.
+
 To post-process the computed aggregate (for example, add server-side noise), implement
 `on_aggregate` and assign an ordered list of model-compatible ndarrays to
 `ctx.new_global_state`. Reference and Flower use that model for evaluation and subsequent

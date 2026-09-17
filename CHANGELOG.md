@@ -5,6 +5,16 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.8.0
+
+**Before-round client selection.** The `before_round` hook now receives all eligible
+client IDs in `ctx.selected_clients` on reference and Flower. A hook can replace them with
+a nonempty, duplicate-free list or tuple to choose which clients train in that round.
+Flower now emits `before_round` before dispatch rather than after fit results arrive. It
+looks up stable partition IDs through client properties only for selective rounds; ordinary
+full-participation runs do not add that request. Custom Flower clients must report a valid
+`cid` property when selection is used. NVFlare's replayed round hooks remain observational.
+
 ## 0.7.0
 
 **Aggregate result override.** On reference and Flower, `on_aggregate` may now replace

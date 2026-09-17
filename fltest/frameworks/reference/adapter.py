@@ -9,6 +9,7 @@ import numpy as np
 import torch
 
 from fltest.core import ClientSubmission, HookContext, HookRunner
+from fltest.core.client_selection import resolve_selected_clients
 from fltest.core.config import RunSpec
 from fltest.core.registry import register_framework
 from fltest.data.models import get_model, model_weight_sum, test, train
@@ -65,14 +66,16 @@ class ReferenceAdapter(FrameworkAdapter):
         for rnd in range(1, spec.num_rounds + 1):
             ctx_r = HookContext(
                 cfg=spec, framework=self.name, run_name=spec.run_name, round=rnd,
-                global_state=global_params, test_data=test_loader, history=history,
+                global_state=global_params, selected_clients=tuple(range(spec.num_clients)),
+                test_data=test_loader, history=history,
             )
             hook_runner.run("before_round", ctx_r)
+            selected_clients = resolve_selected_clients(ctx_r.selected_clients, spec.num_clients)
 
             updates_and_weights: List[tuple] = []
             client_submissions: List[ClientSubmission] = []
             client_hook_metrics: Dict[str, Any] = {}
-            for cid in range(spec.num_clients):
+            for cid in selected_clients:
                 loader = c2loader[cid]
 
                 # before_client_train: attacks may swap the loader; DLG reconstructs here.
