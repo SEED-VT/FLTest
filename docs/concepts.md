@@ -46,6 +46,7 @@ Relevant `HookContext` fields by phase:
 | `client_update` | `after_client_train` | this client's update (attacks/defenses mutate) |
 | `updates_and_weights` | `before_aggregate` | `[(update, n), …]` (robust agg replaces this) |
 | `client_submissions` | `before_aggregate` | received `(client_id, update, num_samples)` records in arrival order; observational, with stable client IDs |
+| `new_global_state` | `on_aggregate`, `after_aggregate` | computed aggregate; replace it at `on_aggregate` to control the committed model |
 | `model`, `test_data` | `after_round` | live model + central test loader |
 | `metrics`, `history` | all | `ctx.record(**kv)` writes here |
 
@@ -54,6 +55,12 @@ to start that round's client training. `client_submissions` preserves the identi
 received update; `updates_and_weights` remains the mutable input to aggregation, so existing
 robust defenses are unchanged. They align at hook entry, but a preceding hook may replace
 or reorder `updates_and_weights`.
+
+On reference and Flower, `on_aggregate` receives the computed model in
+`new_global_state`. A hook may replace it with an ordered list of model-compatible
+ndarrays. That replacement is what `after_aggregate` observes, what the backend evaluates,
+and what clients train from next round. Leaving it unchanged (or setting it to `None`)
+keeps the computed aggregate. NVFlare does not offer this intervention.
 
 ## 4. Hook plugins (`HookPlugin`)
 

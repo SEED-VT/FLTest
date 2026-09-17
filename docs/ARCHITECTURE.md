@@ -64,6 +64,8 @@ The existing `updates_and_weights` tuples remain the mutable aggregation input. 
 obtains stable client IDs from FLTest client fit results rather than treating result
 position as identity. Custom clients that do not report an ID retain normal aggregation,
 with `client_id=None` in their submission record.
+At `on_aggregate`, either backend can commit a replacement model through
+`new_global_state`; `after_aggregate` sees the committed result.
 
 ## Backend hook fidelity
 

@@ -116,9 +116,13 @@ class ReferenceAdapter(FrameworkAdapter):
             )
             hook_runner.run("before_aggregate", ctx_agg)
             uw = ctx_agg.updates_and_weights if ctx_agg.updates_and_weights is not None else updates_and_weights
-            global_params = aggregate_ndarrays(uw)
-            ctx_agg.new_global_state = global_params
+            aggregated = aggregate_ndarrays(uw)
+            ctx_agg.new_global_state = aggregated
             hook_runner.run("on_aggregate", ctx_agg)
+            global_params = (
+                ctx_agg.new_global_state if ctx_agg.new_global_state is not None else aggregated
+            )
+            ctx_agg.new_global_state = global_params
             hook_runner.run("after_aggregate", ctx_agg)
             client_hook_metrics.update(ctx_agg.metrics)  # e.g. server-side DLG, robust-agg stats
 

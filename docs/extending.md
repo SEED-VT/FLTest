@@ -136,6 +136,12 @@ updates, since the ndarray values are mutable. This context is available on refe
 Flower, not NVFlare. FLTest's Flower clients report stable integer IDs; if a custom Flower
 client does not report one, its record has `client_id=None` and still aggregates normally.
 
+To post-process the computed aggregate (for example, add server-side noise), implement
+`on_aggregate` and assign an ordered list of model-compatible ndarrays to
+`ctx.new_global_state`. Reference and Flower use that model for evaluation and subsequent
+rounds, and pass it to `after_aggregate`. If the field is left unchanged or set to `None`,
+the computed aggregate is used. NVFlare does not support this override.
+
 ## Port a metric
 
 Subclass `MetricListenerBaseClass`, hook where the data you need exists, and `ctx.record(...)`:

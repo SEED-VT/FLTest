@@ -5,6 +5,14 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.7.0
+
+**Aggregate result override.** On reference and Flower, `on_aggregate` may now replace
+`ctx.new_global_state` with the model to use for evaluation and the next round. The
+`after_aggregate` hook observes that committed model. Leaving the field unchanged keeps
+the existing weighted-average behavior, and setting it to `None` also retains the
+computed aggregate. NVFlare still does not support an aggregation-result override.
+
 ## 0.6.0
 
 **Identified aggregation context.** The `before_aggregate` hook now includes each received

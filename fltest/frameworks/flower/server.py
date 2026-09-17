@@ -73,9 +73,11 @@ class HookedFedAvg(FedAvg):
         uw = ctx.updates_and_weights if ctx.updates_and_weights is not None else updates_and_weights
 
         aggregated = aggregate_ndarrays(uw)
-        self._global_state = aggregated
         ctx.new_global_state = aggregated
         self._hooks.run("on_aggregate", ctx)
+        aggregated = ctx.new_global_state if ctx.new_global_state is not None else aggregated
+        ctx.new_global_state = aggregated
+        self._global_state = aggregated
         self._hooks.run("after_aggregate", ctx)
 
         # Surface client-side hook metrics (e.g. DLG reconstruction) by averaging numerics.
