@@ -40,6 +40,7 @@ Relevant `HookContext` fields by phase:
 | Field | Set during | Meaning |
 |-------|-----------|---------|
 | `cfg`, `framework`, `round`, `client_id` | all | run identity |
+| `selected_clients` | `before_round` | eligible client IDs; replace with the clients to train this round |
 | `dist_dict` | data phase | `cid → client loader` (attacks may repartition) |
 | `client_data` | `before_client_train` | this client's loader (attacks swap it) |
 | `global_state` | rounds | current global params (list of ndarrays) |
@@ -61,6 +62,15 @@ On reference and Flower, `on_aggregate` receives the computed model in
 ndarrays. That replacement is what `after_aggregate` observes, what the backend evaluates,
 and what clients train from next round. Leaving it unchanged (or setting it to `None`)
 keeps the computed aggregate. NVFlare does not offer this intervention.
+
+On reference and Flower, `before_round` runs before any client fit is dispatched.
+`selected_clients` begins as all IDs from `0` through `num_clients - 1`; a hook may
+replace it with a nonempty list or tuple of unique IDs in that range. `None` retains all
+clients. Invalid selections raise `ValueError` before training. Flower resolves stable
+partition IDs from client properties when a hook selects a subset or changes their order;
+its ordinary full-participation path has no extra identity request. Custom Flower clients
+must report an integer `cid` from `get_properties` for selective rounds. NVFlare's round
+hooks are replayed after execution and cannot control participation.
 
 ## 4. Hook plugins (`HookPlugin`)
 

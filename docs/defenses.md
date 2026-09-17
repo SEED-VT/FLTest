@@ -28,6 +28,7 @@ Three flavors compose through the same hooks:
 | `median` | robust aggregation (coordinate median) | `before_aggregate` | — |
 | `secure_aggregation` | pairwise masking, float | `after_client_train` | `mask_scale` (1.0), `seed` (0) |
 | `mpc_aggregation` | pairwise masking, fixed point | `before_aggregate` | `quant_bits` (16), `modulus` (2^32), `dropout_rate` (0.0) |
+| `fldetector` | history-based client filtering | `before_round`, `before_aggregate`, `after_aggregate` | `window_size` (10), `start_round` (50), `max_clusters` (10), `gap_samples` (20) |
 
 ## How each works
 
@@ -150,6 +151,28 @@ fltest run examples/configs/secure_agg.yaml
 Compare `reconstruction_mse` across `none`, `gradient_noise`, and `secure_agg`; higher is a
 worse reconstruction, i.e. a better defense. Check `secagg_mask_to_update_ratio` first — if it
 is not comfortably above 1, the arm proves nothing and `mask_scale` needs raising.
+**`fldetector`** — compares each client's model delta with a limited-memory BFGS
+prediction from earlier rounds. It scores inconsistencies over `window_size` rounds and
+uses gap statistics and two-cluster k-means to identify the high-score group. Identified
+clients are removed from the current aggregation and excluded from later rounds. This is
+an *online* variant: unlike the [FLDetector paper](https://doi.org/10.1145/3534678.3539231),
+it does not restart training after detection. It requires unique stable client IDs and
+full client participation until detection; custom Flower clients must report their `cid`.
+The default `start_round=50` follows the paper's warm-up choice, so shorter experiments
+should lower it. At least `window_size + 2` rounds are needed to form the history.
+
+To combine detection with a robust rule, place it first:
+
+```yaml
+defenses:
+  - {name: fldetector, params: {window_size: 10, start_round: 50}}
+  - {name: median}
+```
+
+`fldetector_scores`, `fldetector_detected_clients`, and
+`fldetector_detected_count` are recorded in the detection round's metrics. The detector
+fails explicitly if submission IDs are missing or an earlier hook changes the update
+list's alignment. It is not available on NVFlare.
 
 !!! note "Backend support"
     Client-side and robust-aggregation defenses run on the **reference** and **Flower**

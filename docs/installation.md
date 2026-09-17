@@ -54,7 +54,7 @@ fltest list
 #              'secure_aggregation', 'trimmed_mean']
 # Metrics:    ['accuracy', 'loss', 'per_client']
 
-pytest tests/ -q          # 85 passing
+pytest tests/ -q          # 104 passing
 ```
 
 `fltest list` and `fltest pitfalls` return immediately, because neither needs to load a

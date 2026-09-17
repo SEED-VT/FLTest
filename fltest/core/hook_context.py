@@ -9,7 +9,7 @@ the same context shape, a hook written once runs unchanged across all frameworks
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,7 @@ class HookContext:
     run_name: Optional[str] = None       # human label for the run
     round: Optional[int] = None
     client_id: Optional[int] = None
+    selected_clients: Optional[Sequence[int]] = None  # participating IDs at before_round
 
     # --- data phase ---
     raw_dataset: Optional[Any] = None

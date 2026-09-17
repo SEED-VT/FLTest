@@ -17,6 +17,7 @@ BUILTIN_DEFENSES = {
     "median": "fltest.defenses.median",
     "secure_aggregation": "fltest.defenses.secure_aggregation",
     "mpc_aggregation": "fltest.defenses.mpc_aggregation",
+    "fldetector": "fltest.defenses.fldetector",
 }
 
 for _name, _module in BUILTIN_DEFENSES.items():

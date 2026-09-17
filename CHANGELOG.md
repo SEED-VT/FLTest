@@ -5,6 +5,34 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## 0.10.0
+
+**Reporting.** A metric that is not a number no longer becomes a table column. FLDetector
+records per-client scores and the ids it flagged, and formatting either as a float raised
+`TypeError` after a run had already finished. Structured metrics stay in the JSON report,
+where they belong, and `fldetector_detected_count` has a column header and a description.
+
+
+**Online FLDetector defense.** Added a hook-based detector for the reference and Flower
+backends. It compares each client's current model delta against a history-based L-BFGS
+prediction, averages normalized inconsistency over a configurable window, and uses gap
+statistics plus two-cluster k-means to identify suspicious clients. Detected submissions
+are filtered before aggregation; `before_round` excludes those clients in later rounds.
+This online variant does not restart training from the initial model as in the paper.
+When paired with Krum, trimmed mean, or median, list `fldetector` first so filtering
+precedes the aggregation rule. Flower now carries server-side aggregation-hook metrics
+into round history.
+
+## 0.9.0
+
+**Before-round client selection.** The `before_round` hook now receives all eligible
+client IDs in `ctx.selected_clients` on reference and Flower. A hook can replace them with
+a nonempty, duplicate-free list or tuple to choose which clients train in that round.
+Flower now emits `before_round` before dispatch rather than after fit results arrive. It
+looks up stable partition IDs through client properties only for selective rounds; ordinary
+full-participation runs do not add that request. Custom Flower clients must report a valid
+`cid` property when selection is used. NVFlare's replayed round hooks remain observational.
+
 ## 0.8.1
 
 **Fixed.** `P4_secagg_vs_robust` flagged `secure_aggregation` combined with robust

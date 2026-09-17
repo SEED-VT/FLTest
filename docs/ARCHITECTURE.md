@@ -67,6 +67,9 @@ position as identity. Custom clients that do not report an ID retain normal aggr
 with `client_id=None` in their submission record.
 At `on_aggregate`, either backend can commit a replacement model through
 `new_global_state`; `after_aggregate` sees the committed result.
+At `before_round`, reference and Flower expose `selected_clients` so a hook can choose
+the participating client IDs before training. Flower identifies client proxies by their
+reported partition IDs only when a hook changes the default full selection.
 
 ## Backend hook fidelity
 
@@ -74,7 +77,7 @@ At `on_aggregate`, either backend can commit a replacement model through
 |-----------|:---------:|:-----------------:|:------------------:|-------|
 | reference | ✓ | ✓ | ✓ | the oracle; develop attacks here |
 | flower    | ✓ | ✓ (rebuilt in Ray workers from the spec) | ✓ | aggregates with FLTest's own weighted mean for parity |
-| nvflare   | ✓ (driver) | — (separate processes) | ✓ (replayed snapshots) | built-in models only; differential parity of vanilla FedAvg |
+| nvflare   | ✓ (driver) | — (separate processes) | ✓ (replayed snapshots; no selection control) | built-in models only; differential parity of vanilla FedAvg |
 
 ## Testing engines
 

@@ -127,6 +127,7 @@ _METRIC_HEADERS = {
     "mpc_overflow_rate": "mpc-ovf",
     "mpc_dropouts": "mpc-drops",
     "mpc_max_encoded_bits": "mpc-bits",
+    "fldetector_detected_count": "fld-flagged",
 }
 
 #: What each shortened column means, printed under the table for the metrics in play. A
@@ -153,6 +154,7 @@ _METRIC_GLOSS = {
     "mpc_overflow_rate": "share of values that wrapped around the ring; anything above 0 means a silently wrong aggregate",
     "mpc_dropouts": "clients removed after masking, whose pairwise masks stay in the sum",
     "mpc_max_encoded_bits": "log2 of the largest encoded magnitude; above 53 the float64 encode starts dropping low-order bits",
+    "fldetector_detected_count": "clients FLDetector flagged as malicious and excluded this round",
 }
 
 #: Width the fixed-settings block wraps at, independent of how wide the table is.
@@ -230,7 +232,13 @@ def print_run_matrix(
     fixed = [(k, h) for k, h in available if (k, h) not in varying]
 
     # Metric columns: the known order first, then anything else a plugin recorded.
-    present = {k for r in results for k in (r.final or {})} - _METRICS_HIDDEN
+    # Only numbers can be columns. A plugin may record a list or a dict (FLDetector records
+    # per-client scores and the ids it flagged), which belongs in the JSON report rather
+    # than in a fixed-width cell, and which formatting as a float would crash on.
+    present = {
+        k for r in results for k, v in (r.final or {}).items()
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+    } - _METRICS_HIDDEN
     metrics = [m for m in _METRIC_ORDER if m in present]
     metrics += sorted(present - set(metrics))
 

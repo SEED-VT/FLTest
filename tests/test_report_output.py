@@ -120,3 +120,23 @@ def test_failure_reason_skips_a_leading_blank_line(capsys):
     out = capsys.readouterr().out
     assert "AutoModel requires the PyTorch library" in out
     assert "failed: ImportError:\n" not in out
+
+
+def test_non_numeric_metrics_do_not_become_columns(capsys):
+    """A plugin may record a list or a dict, which cannot be a fixed-width cell.
+
+    FLDetector records per-client scores and the ids it flagged. Formatting either as a
+    float raises TypeError, which would crash the CLI after a run had already finished.
+    """
+    r = _result("fld", accuracy=0.9)
+    r.final.update(
+        fldetector_detected_count=2,
+        fldetector_detected_clients=[0, 1],
+        fldetector_scores={0: 0.1, 1: 0.9},
+    )
+    print_run_matrix("demo", [r])          # must not raise
+    out = capsys.readouterr().out
+
+    assert "fld-flagged" in out            # the numeric one is a column
+    assert "fldetector_scores" not in out  # the structured ones stay in the JSON report
+    assert "fldetector_detected_clients" not in out

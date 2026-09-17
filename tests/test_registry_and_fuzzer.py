@@ -16,7 +16,7 @@ def test_registries_populated():
         "label_flip", "sign_flip", "gaussian", "backdoor", "dlg",
         "membership_inference", "model_replacement",
     } <= set(ATTACKS.names())
-    assert {"gradient_noise", "norm_clip", "krum", "trimmed_mean", "median"} <= set(DEFENSES.names())
+    assert {"gradient_noise", "norm_clip", "krum", "trimmed_mean", "median", "fldetector"} <= set(DEFENSES.names())
     assert {"accuracy", "loss", "per_client"} <= set(METRICS.names())
 
 
