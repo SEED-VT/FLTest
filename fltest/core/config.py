@@ -94,6 +94,7 @@ FUZZABLE_KNOBS = (
     "dirichlet_alpha",
     "classes_per_partition",
     "optimizer",
+    "partition_seed",
 )
 
 
@@ -106,6 +107,12 @@ class RunSpec(BaseModel):
 
     # reproducibility / hardware
     seed: int = 786
+    #: Draw for the random partitioners (dirichlet, pathological), separate from ``seed``
+    #: so that repeating a run under new training noise and repeating it on a new client
+    #: split are different questions. Holding one fixed while varying the other is the
+    #: only way to tell a result that depends on the data split from one that does not.
+    #: Defaults to the partitioners' own 42, so existing results stay reproducible.
+    partition_seed: int = 42
     device: str = "cpu"
     deterministic: bool = True
     total_cpus: int = 4
@@ -163,9 +170,10 @@ class RunSpec(BaseModel):
 
     def partitioner_kwargs(self) -> Dict[str, Any]:
         if self.data_distribution == "dirichlet":
-            return {"alpha": self.dirichlet_alpha}
+            return {"alpha": self.dirichlet_alpha, "seed": self.partition_seed}
         if self.data_distribution == "pathological":
-            return {"classes_per_partition": self.classes_per_partition}
+            return {"classes_per_partition": self.classes_per_partition,
+                    "seed": self.partition_seed}
         return {}
 
     def aggregation(self) -> str:
@@ -203,6 +211,7 @@ class RunSpec(BaseModel):
             "client_batch_size": self.client_batch_size,
             "optimizer": self.optimizer,
             "seed": self.seed,
+            "partition_seed": self.partition_seed,
             "attacks": [
                 {"name": a.name, "params": a.params, "target_clients": a.target_clients}
                 for a in self.attacks
@@ -219,6 +228,7 @@ class TestConfig(BaseModel):
 
     name: str = "fltest_run"
     seed: int = 786
+    partition_seed: ScalarOrList = 42
     device: str = "cpu"
     deterministic: bool = True
     total_cpus: int = 4

@@ -1,257 +1,65 @@
-# A Little Is Enough (Baruch et al., NeurIPS 2019): every experiment, in one file.
+# Does FLDetector stop "A Little Is Enough", as its paper claims?
 #
-# The attack sends the honest mean shifted by z per-coordinate standard deviations. Four of
-# ten clients are adversarial in every attacked run. The runs fall into three groups, and
-# each group keeps its own round count and partitioning so its numbers match docs/attacks.md.
+# Zhang et al., FLDetector (KDD 2022) define ALIE as the Scaling Attack's backdoor update
+# cropped into the honest clients' own range, and report on MNIST with Median aggregation
+# and 28 of 100 clients malicious:
 #
-# Watch `little_is_enough_absorption`, not accuracy. It is the share of the shift the
-# attacker asked for that reached the model: 0 is fully filtered, 1 is swallowed whole, and
-# plain FedAvg concedes exactly the attackers' share, 0.40. A rule above 0.40 does worse
-# than no defense. Accuracy at this scale swings by about +/- 0.02 between seeds, which is
-# wider than anything the attack does to it, so a single run will mislead you.
+#     ALIE without FLDetector   97.8 accuracy / 100.0 ASR
+#     ALIE with    FLDetector   97.9 accuracy /   0.3 ASR     (their Table 3)
+#     detection of ALIE         FNR 0.00, every attacker caught (their Table 2)
 #
-# Leaving `z` unset uses the paper's z_max for the given client counts, which is only 0.43
-# at 4 attackers out of 10: stealthy, and in practice harmless. Set `z` to sweep strength.
+# Three runs, one attack: the clean baseline, the attack undefended, and the attack with
+# FLDetector in front of Median. FLDetector uses the paper's own defaults (detect from
+# iteration 50, window 10, 10 clusters, 20 gap samples), so only the defense differs
+# between the last two runs.
 #
-# 1. krum-*: strength sweep against Krum, 8 rounds. The perturbation has to stay inside the
-#    honest clients' own spread, or Krum stops selecting it and the attack buys nothing over
-#    the naive Gaussian baseline. Absorption is 1.00 up to z = 1.5 and ~0 by z = 3.0.
+# Compare `asr` against the paper's ASR column and `detection_fnr` against Table 2.
 #
-# 2. rules-*: the same attack at z = 1.5 against each aggregation rule, 4 rounds. Measures
-#    how much each rule concedes, not convergence.
+# Why non-IID matters here, measured rather than assumed. The attack clamps its poisoned
+# model into mu +/- z*sigma, where sigma is how much honest clients disagree per weight.
+# Clipping a trained backdoor into that band leaves almost nothing of it: a single clipped
+# update scores 0.02 ASR on an MLP and 0.0000 on LeNet with IID data, where honest convnet
+# clients agree to within 1e-5 per weight. The attack only works by accumulating that
+# residue over many rounds. Dirichlet(0.5) widens LeNet's band about 40x, which takes one
+# clipped round from 0.0000 to 0.1536 ASR -- so this is the setting where it has a chance.
 #
-# 3. fldetector-*: does FLDetector (Zhang et al., KDD 2022) catch it? FLDetector flags
-#    clients whose update breaks g_t = g_{t-1} + H (w_t - w_{t-1}); the crafted update is
-#    built from honest gradients and inherits that consistency. 80 rounds, with the paper's
-#    detector settings: a window of 10 rounds, detection from round 50, 20 gap-statistic
-#    samples. `no-attack` measures false alarms and `sign-flip` checks the detector works
-#    at this scale at all. Read `detection_precision` and `detection_recall` for who was
-#    caught.
-#
-# 4. backdoor-*: the ALIE paper's backdoor variant (`little_is_enough_backdoor`, Algorithm
-#    4: one update trained from the honest mean, shared by every attacker) in the FLDetector
-#    paper's setup: 100 clients, 28 of them malicious (28%), the upper-left 5x5 trigger with
-#    target label 0, and FLDetector's defaults. Each aggregation rule runs with and without
-#    FLDetector in front of it, and `backdoor-convergence-attack-*` runs the convergence
-#    attack in the same setup. z = 0.74 is Algorithm 3's z_max for n = 100, m = 28. Read
-#    `attack_success_rate` (ASR) for the backdoor and the paper's `detection_accuracy` /
-#    `detection_fpr` / `detection_fnr` for the detector.
-#
-# 5. cropped-backdoor-*: the same setup against `little_is_enough_cropped_backdoor`, the
-#    variant as the FLDetector paper describes running it: each attacker trains its own
-#    Scaling-attack backdoor from the global model, then crops it into range. Comparing
-#    groups 4 and 5 isolates what FLDetector detects: how the malicious update is built.
-#
-# Groups 4 and 5 take about 10 minutes a run on a GPU and dominate the run time. The
-# `-krum` run alone takes about an hour, because Krum compares every pair of updates.
+# About an hour on CPU.
 #
 #   fltest run examples/configs/little_is_enough.yaml
 name: little_is_enough
-device: cuda
+device: cpu
 dataset: mnist
-model_name: MLP
-num_clients: 10
+model_name: LeNet
+data_distribution: dirichlet
+dirichlet_alpha: 0.5
+num_clients: 100
+num_rounds: 120
 client_lr: 0.05
-max_test_data_size: 1024
+client_epochs: 1
 metrics: [accuracy, loss, detection]
 
 runs:
-  # --- 1. strength sweep against Krum ---
   - framework: reference
-    name: krum-no-attack
-    num_rounds: 8
-    dataset_partitions: 60
-    attacks: []
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  - framework: reference
-    name: krum-lie-auto-z
-    num_rounds: 8
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  - framework: reference
-    name: krum-lie-z-1.5
-    num_rounds: 8
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  - framework: reference
-    name: krum-lie-z-3.0
-    num_rounds: 8
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 3.0}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  - framework: reference
-    name: krum-gaussian-baseline
-    num_rounds: 8
-    dataset_partitions: 60
-    attacks: [{name: gaussian, params: {sigma: 0.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  # --- 2. each aggregation rule at z = 1.5 ---
-  - framework: reference
-    name: rules-no-attack-fedavg
-    num_rounds: 4
-    dataset_partitions: 120
-    attacks: []
-    defenses: []
-
-  - framework: reference
-    name: rules-attack-fedavg
-    num_rounds: 4
-    dataset_partitions: 120
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: []
-
-  - framework: reference
-    name: rules-attack-krum
-    num_rounds: 4
-    dataset_partitions: 120
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: krum, params: {num_byzantine: 4}}]
-
-  - framework: reference
-    name: rules-attack-median
-    num_rounds: 4
-    dataset_partitions: 120
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
+    name: no-attack
     defenses: [{name: median}]
-
-  - framework: reference
-    name: rules-attack-trimmed-mean
-    num_rounds: 4
-    dataset_partitions: 120
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: trimmed_mean, params: {trim: 2}}]
-
-  # --- 3. FLDetector ---
-  - framework: reference
-    name: fldetector-no-attack
-    num_rounds: 80
-    dataset_partitions: 60
     attacks: []
-    defenses: [{name: fldetector}]
 
   - framework: reference
-    name: fldetector-sign-flip
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: sign_flip, params: {scale: 3.0}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}]
-
-  - framework: reference
-    name: fldetector-lie-auto-z
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}]
-
-  - framework: reference
-    name: fldetector-lie-z-1.5
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}]
-
-  - framework: reference
-    name: fldetector-lie-z-3.0
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 3.0}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}]
-
-  - framework: reference
-    name: fldetector-lie-z-10
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 10.0}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}]
-
-  - framework: reference
-    name: fldetector-lie-z-1.5-then-median
-    num_rounds: 80
-    dataset_partitions: 60
-    attacks: [{name: little_is_enough, params: {z: 1.5}, target_clients: [0, 1, 2, 3]}]
-    defenses: [{name: fldetector}, {name: median}]
-
-  # --- 4. backdoor variant, 100 clients with 28 malicious (the FLDetector paper's setup) ---
-  - <<: &hundred_clients {framework: reference, num_clients: 100, dataset_partitions: 100,
-                        num_rounds: 80, max_test_data_size: 10000}
-    name: backdoor-no-attack-median
-    attacks: []
+    name: alie-median
     defenses: [{name: median}]
+    attacks:
+      - name: little_is_enough_cropped_backdoor
+        params: {z: 0.74, target_label: 0, patch_size: 5}
+        target_clients: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                         14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
-  - <<: *hundred_clients
-    name: backdoor-no-attack-fldetector
-    attacks: []
-    defenses: [{name: fldetector}]
-
-  - <<: *hundred_clients
-    name: backdoor-fedavg
-    attacks: &backdoor_attack
-      - name: little_is_enough_backdoor
-        params: {z: 0.74}
-        target_clients: &attackers [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                                    14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-    defenses: []
-
-  - <<: *hundred_clients
-    name: backdoor-median
-    attacks: *backdoor_attack
-    defenses: [{name: median}]
-
-  - <<: *hundred_clients
-    name: backdoor-fldetector
-    attacks: *backdoor_attack
-    defenses: [{name: fldetector}]
-
-  - <<: *hundred_clients
-    name: backdoor-fldetector-then-median
-    attacks: *backdoor_attack
-    defenses: [{name: fldetector}, {name: median}]
-
-  - <<: *hundred_clients
-    name: backdoor-fldetector-then-krum
-    attacks: *backdoor_attack
-    defenses: [{name: fldetector}, {name: krum, params: {num_byzantine: 28}}]
-
-  - <<: *hundred_clients
-    name: backdoor-fldetector-then-trimmed-mean
-    attacks: *backdoor_attack
-    defenses: [{name: fldetector}, {name: trimmed_mean, params: {trim: 28}}]
-
-  - <<: *hundred_clients
-    name: backdoor-convergence-attack-fldetector-then-median
-    attacks: [{name: little_is_enough, params: {z: 0.74}, target_clients: *attackers}]
-    defenses: [{name: fldetector}, {name: median}]
-
-  # --- 5. cropped backdoor: each attacker's own Scaling-attack backdoor, cropped into range ---
-  - <<: *hundred_clients
-    name: cropped-backdoor-fedavg
-    attacks: &cropped_backdoor_attack
-      - {name: little_is_enough_cropped_backdoor, params: {z: 0.74}, target_clients: *attackers}
-    defenses: []
-
-  - <<: *hundred_clients
-    name: cropped-backdoor-median
-    attacks: *cropped_backdoor_attack
-    defenses: [{name: median}]
-
-  - <<: *hundred_clients
-    name: cropped-backdoor-fldetector
-    attacks: *cropped_backdoor_attack
-    defenses: [{name: fldetector}]
-
-  - <<: *hundred_clients
-    name: cropped-backdoor-fldetector-then-median
-    attacks: *cropped_backdoor_attack
-    defenses: [{name: fldetector}, {name: median}]
-
-  - <<: *hundred_clients
-    name: cropped-backdoor-fldetector-then-trimmed-mean
-    attacks: *cropped_backdoor_attack
-    defenses: [{name: fldetector}, {name: trimmed_mean, params: {trim: 28}}]
+  - framework: reference
+    name: alie-fldetector-median
+    defenses:
+      - {name: fldetector, params: {start_round: 50, window_size: 10, max_clusters: 10, gap_samples: 20}}
+      - {name: median}
+    attacks:
+      - name: little_is_enough_cropped_backdoor
+        params: {z: 0.74, target_label: 0, patch_size: 5}
+        target_clients: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                         14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]

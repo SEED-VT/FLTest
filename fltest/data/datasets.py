@@ -96,13 +96,13 @@ _TRANSFORMS = {
 # A lower Dirichlet alpha means more label skew across clients.
 PARTITIONERS = {
     "iid": lambda n, label_column="label", **kw: IidPartitioner(num_partitions=n),
-    "dirichlet": lambda n, label_column="label", alpha=0.5, **kw: DirichletPartitioner(
-        num_partitions=n, partition_by=label_column, alpha=alpha
+    "dirichlet": lambda n, label_column="label", alpha=0.5, seed=42, **kw: DirichletPartitioner(
+        num_partitions=n, partition_by=label_column, alpha=alpha, seed=seed
     ),
-    "pathological": lambda n, label_column="label", classes_per_partition=2, **kw: (
+    "pathological": lambda n, label_column="label", classes_per_partition=2, seed=42, **kw: (
         PathologicalPartitioner(
             num_partitions=n, partition_by=label_column,
-            num_classes_per_partition=classes_per_partition,
+            num_classes_per_partition=classes_per_partition, seed=seed,
         )
     ),
     "natural": lambda n, label_column="label", partition_by="", **kw: NaturalIdPartitioner(
