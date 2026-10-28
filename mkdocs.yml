@@ -48,6 +48,7 @@ nav:
   - Configuring runs:
       - Configuration reference: configuration.md
       - Config fuzzing: fuzzing.md
+      - Multi-node clusters: multi-node.md
   - Components:
       - Datasets: datasets.md
       - Attacks: attacks.md
