@@ -8,6 +8,7 @@ Ray workers (rebuilt from the spec in :mod:`fltest.frameworks.flower.client`).
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict, Optional
 
 from flwr.simulation import run_simulation
@@ -45,6 +46,22 @@ def ray_backend_config(total_cpus: int, total_gpus: int, num_clients: int) -> Di
     return {"client_resources": {"num_cpus": 1, "num_gpus": per_client_gpu}, "init_args": init_args}
 
 
+def share_with_cluster(c2loader: Dict[int, Any], backend_config: Dict[str, Any]) -> Dict[int, Any]:
+    """Put each client's loader into the cluster's object store once and return the references.
+
+    The client app is pickled with every message Flower sends to a client, so a client app that
+    held the loaders themselves would ship every client's data with every call. Ray is started
+    here the way Flower starts it, which makes Flower reuse this connection; Flower shuts Ray down
+    at the end of the run, which frees the stored loaders.
+    """
+    import ray
+
+    if not ray.is_initialized():
+        ray.init(runtime_env={"env_vars": {"PYTHONPATH": ":".join(sys.path)}},
+                 **backend_config["init_args"])
+    return {cid: ray.put(loader) for cid, loader in c2loader.items()}
+
+
 @register_framework("flwr")
 @register_framework("flower")
 class FlowerAdapter(FrameworkAdapter):
@@ -79,6 +96,8 @@ class FlowerAdapter(FrameworkAdapter):
         c2loader = ctx_data.dist_dict if ctx_data.dist_dict is not None else c2loader
 
         backend_config = ray_backend_config(spec.total_cpus, spec.total_gpus, spec.num_clients)
+        if ray_cluster_address():
+            c2loader = share_with_cluster(c2loader, backend_config)
 
         state_holder: Dict[str, Any] = {}
         server_app = get_server_app(spec, driver_runner, history, test_loader, state_holder)

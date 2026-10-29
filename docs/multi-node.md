@@ -38,7 +38,7 @@ export FLTEST_RAY_ADDRESS=<head-ip>:6379
 fltest run my_config.yaml
 ```
 
-With `FLTEST_RAY_ADDRESS` set, two things change:
+With `FLTEST_RAY_ADDRESS` set, three things change:
 
 - **Flower joins the cluster.** It connects to it instead of starting a private Ray sized by
   `total_cpus`/`total_gpus`, so those two settings are ignored and the cluster's resources
@@ -47,6 +47,11 @@ With `FLTEST_RAY_ADDRESS` set, two things change:
   memory-mapped from the local Hugging Face cache, so they reach clients on other nodes. A
   memory-mapped table pickles as a file path that exists only on the driver node. These
   in-memory shards are cached under their own key, separate from single-machine runs.
+- **Each shard is stored in the cluster once.** Before the run starts, each client's shard is
+  put into Ray's object store, and a client fetches only its own. Flower sends the client app
+  with every message to a client, so an app that held the shards would carry every client's
+  data each time. With 120 CIFAR-10 clients that is about 800 MB per message, which fills the
+  head node's disk.
 
 Unset the variable to go back to single-machine runs.
 

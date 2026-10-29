@@ -1,15 +1,17 @@
 """Running Flower clients on a multi-node Ray cluster (FLTEST_RAY_ADDRESS).
 
-Two things must change when the clients leave the driver's machine: Flower joins the existing
-cluster instead of starting a private one, and the prepared data shards travel by value,
-because a memory-mapped Hugging Face table pickles as a path that only exists on the driver.
-These checks need no network and no running cluster.
+Three things must change when the clients leave the driver's machine: Flower joins the existing
+cluster instead of starting a private one, the prepared data shards travel by value, because a
+memory-mapped Hugging Face table pickles as a path that only exists on the driver, and each
+client's shard goes into the object store once, so a message to a client does not carry every
+client's data. These checks need no network and no running cluster.
 """
 
 import pytest
 
 from fltest.data import datasets
-from fltest.frameworks.flower.adapter import RAY_ADDRESS_ENV, ray_backend_config
+from fltest.frameworks.flower.adapter import RAY_ADDRESS_ENV, ray_backend_config, share_with_cluster
+from fltest.frameworks.flower.client import client_loader
 
 
 @pytest.fixture
@@ -49,3 +51,20 @@ def test_cluster_shards_are_in_memory_with_their_own_cache_key(cluster):
     assert datasets._shards_in_memory() is True
     key = datasets._cache_key("mnist", 10, "dirichlet", "", {"alpha": 0.5})
     assert key == "mnist_10_dirichlet__alpha0.5_inmem"
+
+
+def test_local_loaders_are_used_directly():
+    loader = [1, 2, 3]
+    assert client_loader(loader) is loader
+
+
+def test_shared_loaders_are_fetched_per_client():
+    import ray
+
+    ray.init(num_cpus=1, include_dashboard=False)
+    try:
+        refs = share_with_cluster({0: [1, 2], 1: [3]}, {"init_args": {}})
+        assert all(isinstance(r, ray.ObjectRef) for r in refs.values())
+        assert client_loader(refs[1]) == [3]
+    finally:
+        ray.shutdown()
