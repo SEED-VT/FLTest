@@ -5,6 +5,25 @@ versioning](https://semver.org). The patch number changes for a fix and the mino
 for new capability that leaves existing configs working. The major number changes when the
 configuration schema or the plugin API breaks.
 
+## Unreleased
+
+**Multi-node clusters.** The Flower backend can now run its clients on an existing multi-node
+Ray cluster. Set `FLTEST_RAY_ADDRESS` to the head node's address, and Flower joins that
+cluster instead of starting a private single-machine Ray. Without the variable, behaviour is
+unchanged. `docs/multi-node.md` covers cluster setup.
+
+Two changes make this work. Ray refuses `num_cpus`/`num_gpus` when it connects to an existing
+cluster, so the backend passes only the address. The other change is to the data. Prepared
+shards were memory-mapped from the local Hugging Face cache, and a memory-mapped table
+pickles as a file path. Clients scheduled on other nodes therefore failed with
+`FileNotFoundError` on a cache file that existed only on the driver, and the run stalled with
+every client actor idle. On a cluster the shards are now kept in memory and travel by value,
+under a separate cache key. `tests/test_multinode_ray.py` covers both decisions.
+
+Verified on an 8-node, 128-vCPU Ray cluster on the SPHERE testbed. There,
+`examples/configs/defense_robust.yaml` reproduces the single-machine result, with accuracy
+0.8965 and attack success 0.0270, against 0.8945 and 0.0346 on one machine.
+
 ## 0.11.0
 
 **Detection quality.** Added the `detection` metric listener. A detector's accuracy column

@@ -12,6 +12,7 @@ without editing this file.
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -199,7 +200,8 @@ def _tokenize_split(split, spec: DatasetSpec, tokenizer_id: str):
         )
 
     keep = {"input_ids", "attention_mask", "label"}
-    split = split.map(encode, input_columns=spec.column, batched=True)
+    split = split.map(encode, input_columns=spec.column, batched=True,
+                      keep_in_memory=_shards_in_memory())
     return split.remove_columns([c for c in split.column_names if c not in keep])
 
 
@@ -251,13 +253,33 @@ def get_federated_dataset(
             split = _tokenize_split(split, spec, tokenizer_id)
         else:
             transform = _TRANSFORMS[spec.transform]
-            split = split.map(lambda img: {"img": transform(img)}, input_columns=spec.column)
+            # On a Ray cluster the shards are pickled to other nodes. A memory-mapped table pickles
+            # as a path into this machine's Hugging Face cache, which other nodes do not have.
+            split = split.map(lambda img: {"img": transform(img)}, input_columns=spec.column,
+                              keep_in_memory=_shards_in_memory())
         return split.with_format("torch")
 
     return {
         "c2data": {cid: prepare(raw) for cid, raw in client_raw.items()},
         "test_data": prepare(test_raw),
     }
+
+
+def _shards_in_memory() -> bool:
+    """Keep prepared shards in memory when clients run on a multi-node Ray cluster.
+
+    ``FLTEST_RAY_ADDRESS`` is the switch the Flower backend uses to join such a cluster.
+    """
+    return bool(os.environ.get("FLTEST_RAY_ADDRESS"))
+
+
+def _cache_key(dataset_name: str, num_clients: int, partitioner: str, tokenizer_id: str,
+               part_kwargs: Dict) -> str:
+    """Cache key for prepared shards. In-memory shards get their own key, so a cluster run never
+    reuses memory-mapped shards cached by a single-machine run, and the reverse."""
+    kw = "_".join(f"{k}{v}" for k, v in sorted(part_kwargs.items()))
+    key = f"{dataset_name}_{num_clients}_{partitioner}_{tokenizer_id}_{kw}"
+    return key + "_inmem" if _shards_in_memory() else key
 
 
 def get_cached_federated_dataset(
@@ -274,8 +296,7 @@ def get_cached_federated_dataset(
     different token ids from the same text.
     """
     cache = Index(cache_path)
-    kw = "_".join(f"{k}{v}" for k, v in sorted(part_kwargs.items()))
-    key = f"{dataset_name}_{num_clients}_{partitioner}_{tokenizer_id}_{kw}"
+    key = _cache_key(dataset_name, num_clients, partitioner, tokenizer_id, part_kwargs)
     if key not in cache:
         cache[key] = get_federated_dataset(
             dataset_name, num_clients, partitioner, tokenizer_id=tokenizer_id, **part_kwargs

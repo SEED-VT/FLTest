@@ -146,6 +146,9 @@ pytest tests/ -q
 
 See `docs/ARCHITECTURE.md` for the design and `examples/configs/` for runnable configs.
 
+To spread the Flower backend's clients over a multi-node Ray cluster, set
+`FLTEST_RAY_ADDRESS`; see [multi-node clusters](docs/multi-node.md).
+
 ## Notes & limitations
 
 - **NVFlare** accepts built-in models only, since it rebuilds the model from its class

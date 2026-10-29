@@ -9,6 +9,7 @@ driver otherwise.
 
 from __future__ import annotations
 
+import ray
 from flwr.client import ClientApp, NumPyClient
 
 from fltest.core import HookContext
@@ -70,12 +71,17 @@ class FlowerClient(NumPyClient):
         return float(loss), len(self.trainloader), {"accuracy": float(acc)}
 
 
+def client_loader(entry):
+    """A client's loader, fetched from the object store when it was shared with a cluster."""
+    return ray.get(entry) if isinstance(entry, ray.ObjectRef) else entry
+
+
 def get_client_app(spec: RunSpec, c2loader) -> ClientApp:
     """Build the Flower ClientApp; hooks are reconstructed per-worker from ``spec``."""
 
     def client_fn(context):
         runner = build_hook_runner(spec)  # rebuilt in-worker from the picklable spec
         partition_id = context.node_config["partition-id"]
-        return FlowerClient(c2loader[partition_id], spec, partition_id, runner).to_client()
+        return FlowerClient(client_loader(c2loader[partition_id]), spec, partition_id, runner).to_client()
 
     return ClientApp(client_fn=client_fn)
