@@ -19,13 +19,16 @@ The test subset size is `max_test_data_size`. These three appear in `final` for 
 
 | Metric | Produced by | Meaning |
 |--------|-------------|---------|
-| `attack_success_rate` | `backdoor` attack | fraction of a *triggered* test set predicted as the target label (excludes samples already of the target) |
+| `attack_success_rate` | `backdoor`, `little_is_enough_backdoor`, `little_is_enough_cropped_backdoor` attacks | fraction of a *triggered* test set predicted as the target label (excludes samples already of the target) |
 | `reconstruction_mse` | `dlg` attack | pixel MSE between the reconstructed and true victim image (lower = better reconstruction = worse privacy) |
 | `reconstruction_psnr` | `dlg` attack | peak signal-to-noise ratio of the reconstruction (higher = better reconstruction) |
 | `label_recovery` | `dlg` attack | fraction of victim labels correctly recovered |
 | `membership_inference_auc` | `membership_inference` attack | probability that a random training sample looks more member-like than a random held-out one; 0.5 is no leakage, 1.0 is perfect separation |
 | `membership_loss_gap` | `membership_inference` attack | mean held-out loss minus mean training loss, which is the overfitting gap the attack exploits |
 | `model_replacement_scale` | `model_replacement` attack | factor applied to the malicious client's delta from the current global model |
+| `little_is_enough_z` | `little_is_enough` attack | standard deviations the crafted update sits from the benign mean; large enough to hurt and small enough to stay selected is the whole attack |
+| `little_is_enough_drift` | `little_is_enough` attack | how far the round's aggregate actually landed from the benign mean, in benign standard deviations — the shift the attack really achieved |
+| `little_is_enough_absorption` | `little_is_enough` attack | `drift / z`: the fraction of the requested shift the defense conceded. 0 means fully filtered, 1 means the crafted update was taken wholesale. Plain FedAvg concedes the attackers' share of total sample weight (`m/n` for equal shards), so anything above that line is a defense doing worse than no defense |
 | `per_client_acc_mean` / `per_client_acc_min` | `per_client` listener | personalized accuracy of the final global model on each client's own data — `min` exposes representation disparity (project Pitfall-3) |
 
 Add `per_client` to `metrics:` to enable personalized evaluation. Attack metrics appear
@@ -76,10 +79,17 @@ the comparison is measured.
 | `detection_f1` | harmonic mean of the two |
 | `detection_false_positives` | honest clients the defense wrongly flagged |
 | `detection_missed` | malicious clients the defense never flagged |
+| `detection_accuracy` | DACC in the FLDetector paper: the share of all `num_clients` classified correctly, counting an unflagged client as classified benign |
+| `detection_fpr` | share of honest clients flagged as malicious |
+| `detection_fnr` | share of malicious clients left unflagged (`1 - detection_recall`) |
+
+The last three are the FLDetector paper's own detection metrics, so a run can be read
+against its Table 2 directly.
 
 Ground truth is the union of `target_clients` over the attacks that make a client
-malicious, which are `backdoor`, `label_flip`, `sign_flip`, `gaussian`, and
-`model_replacement`. `dlg` and `membership_inference` are deliberately excluded, because an
+malicious, which are `backdoor`, `label_flip`, `sign_flip`, `gaussian`,
+`model_replacement`, `little_is_enough`, `little_is_enough_backdoor`, and
+`little_is_enough_cropped_backdoor`. `dlg` and `membership_inference` are deliberately excluded, because an
 honest-but-curious server names a *victim* rather than an adversary, and counting one would
 mark an honest client as a detection the defense owed you.
 

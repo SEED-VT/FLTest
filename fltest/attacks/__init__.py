@@ -18,6 +18,9 @@ BUILTIN_ATTACKS = {
     "dlg": "fltest.attacks.dlg",
     "membership_inference": "fltest.attacks.membership_inference",
     "model_replacement": "fltest.attacks.model_replacement",
+    "little_is_enough": "fltest.attacks.little_is_enough",
+    "little_is_enough_backdoor": "fltest.attacks.little_is_enough_backdoor",
+    "little_is_enough_cropped_backdoor": "fltest.attacks.little_is_enough_backdoor",
 }
 
 for _name, _module in BUILTIN_ATTACKS.items():

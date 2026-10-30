@@ -5,6 +5,7 @@ import torch
 
 from fltest.data.datasets import (
     DATASET_CONFIG,
+    build_dataloaders,
     dataset_meta,
     get_federated_dataset,
     list_partitioners,
@@ -82,3 +83,44 @@ def test_every_dataset_id_is_namespaced():
 def test_a_bare_unknown_dataset_says_what_is_wrong():
     with pytest.raises(ValueError, match="must be written as 'namespace/name'"):
         resolve_dataset("not_a_builtin")
+
+
+def _prepared_split(n, width=4):
+    """A split shaped like ``prepare``'s output: nested-list images and int labels."""
+    from datasets import Dataset
+
+    images = torch.arange(n * width * width, dtype=torch.float32).reshape(n, 1, width, width)
+    return Dataset.from_dict(
+        {"img": images.tolist(), "label": [i % 3 for i in range(n)]}
+    ).with_format("torch")
+
+
+def test_client_loaders_serve_the_same_batches_from_memory():
+    from torch.utils.data import DataLoader
+
+    from fltest.data.utils import seed_everything
+
+    shards = {cid: _prepared_split(10 + cid) for cid in range(2)}
+    loaders = build_dataloaders(
+        {"c2data": shards, "test_data": _prepared_split(7)}, 2, 4, 3, 5, seed=1)
+    for cid, shard in shards.items():
+        seed_everything(1)
+        expected = [b for _ in range(2) for b in DataLoader(shard, batch_size=4, shuffle=True)]
+        seed_everything(1)
+        served = [b for _ in range(2) for b in loaders["c2loader"][cid]]
+        assert len(served) == len(expected)
+        for got, want in zip(served, expected):
+            assert got.keys() == want.keys()
+            for key in want:
+                assert got[key].dtype == want[key].dtype
+                assert torch.equal(got[key], want[key])
+    assert sum(len(b["label"]) for b in loaders["test_loader"]) == 5
+
+
+def test_a_ragged_split_is_read_as_before():
+    from datasets import Dataset
+
+    from fltest.data.datasets import _in_memory
+
+    ragged = Dataset.from_dict({"img": [[1.0], [1.0, 2.0]], "label": [0, 1]}).with_format("torch")
+    assert _in_memory(ragged) is ragged

@@ -133,6 +133,9 @@ _METRIC_HEADERS = {
     "detection_f1": "det-f1",
     "detection_false_positives": "det-fp",
     "detection_missed": "det-miss",
+    "detection_accuracy": "dacc",
+    "detection_fpr": "fpr",
+    "detection_fnr": "fnr",
 }
 
 #: What each shortened column means, printed under the table for the metrics in play. A
@@ -165,6 +168,9 @@ _METRIC_GLOSS = {
     "detection_f1": "harmonic mean of detection precision and recall",
     "detection_false_positives": "honest clients the defense wrongly flagged",
     "detection_missed": "malicious clients the defense never flagged",
+    "detection_accuracy": "FLDetector paper's DACC, the share of all clients classified correctly as benign or malicious",
+    "detection_fpr": "share of honest clients flagged as malicious",
+    "detection_fnr": "share of malicious clients left unflagged",
 }
 
 #: Width the fixed-settings block wraps at, independent of how wide the table is.

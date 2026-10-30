@@ -24,6 +24,7 @@ from fltest.metrics.base import MetricListenerBaseClass
 #: from this set is server-side, and its targets are victims rather than adversaries.
 MALICIOUS_CLIENT_ATTACKS = {
     "backdoor", "label_flip", "sign_flip", "gaussian", "model_replacement",
+    "little_is_enough", "little_is_enough_backdoor", "little_is_enough_cropped_backdoor",
 }
 
 #: Metrics a detector records to announce what it flagged.
@@ -79,12 +80,20 @@ class DetectionQualityListener(MetricListenerBaseClass):
         precision = hits / len(flagged) if flagged else 0.0
         recall = hits / len(truth) if truth else 0.0
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
+        false_positives, missed = len(flagged - truth), len(truth - flagged)
+        # The FLDetector paper's own three, over every client in the federation: an
+        # unflagged client counts as classified benign.
+        clients = max(int(ctx.cfg.num_clients), len(truth | flagged))
+        honest = clients - len(truth)
         ctx.record(
             detection_precision=precision,
             detection_recall=recall,
             detection_f1=f1,
-            detection_false_positives=float(len(flagged - truth)),
-            detection_missed=float(len(truth - flagged)),
+            detection_false_positives=float(false_positives),
+            detection_missed=float(missed),
+            detection_accuracy=(clients - false_positives - missed) / clients,
+            detection_fpr=false_positives / honest if honest else 0.0,
+            detection_fnr=missed / len(truth) if truth else 0.0,
         )
         ctx.extras["detection"] = {
             "malicious_clients": sorted(truth),
